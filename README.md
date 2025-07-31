@@ -2,7 +2,7 @@
 
 **“Three Lungs. One Body. Still Breathing.”**
 
-COLE is a lightweight, open-spec coherence layer for intelligent systems under load. It lets AI agents blend their outputs across three core functions—drive (Id), mediation (Ego), and grounding (Superego)—based on real-time system health. You can wrap any AI model or agent framework with COLE to make it more stable, more trustworthy, and more human-aware.
+COLE is a lightweight, open-spec coherence layer for intelligent systems under load. It lets AI agents blend their outputs across three core functions—drive ID, Ego, and Superego based on real-time system health. You can wrap any AI model or agent framework with COLE to make it more stable, more trustworthy, and more human-aware.
 
 ---
 
@@ -49,17 +49,6 @@ COLE is designed to work **on-device** or **at the edge**, with no cloud depende
 - Private AI agents stay aligned without phoning home.
 - Local agents can coordinate with broader systems using a shared “heartbeat.”
 - Coherence becomes portable—your AI can stay *you* across devices and time.
-
----
-
-## 📦 Files Included
-
-- `cole_controller.py` – The blending logic (core runtime).
-- `id_module.py` – Handles exploratory reasoning.
-- `ego_module.py` – Handles pragmatic/logical responses.
-- `superego_module.py` – Handles norms, memory, constraints.
-- `signals.py` – Extracts Φ*, κ, and ε from your system.
-- `heartbeat.py` – Optional: adds low-bandwidth sync channel for multi-agent setups.
 
 ---
 
