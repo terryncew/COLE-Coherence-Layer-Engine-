@@ -1,0 +1,201 @@
+# mel.py
+from __future__ import annotations
+from dataclasses import dataclass, field
+from enum import Enum
+from typing import Dict, List, Optional, Tuple, Any
+from collections import deque, defaultdict
+import statistics, time
+
+# ------------------ Event taxonomy ------------------
+
+class EventType(Enum):
+    PHI_DEGRADATION   = "phi_degradation"
+    VKD_CRITICAL      = "vkd_critical"
+    COHERENCE_SNAP    = "coherence_snap"
+    RESOURCE_HEAT     = "resource_heat"
+    SOCIAL_STRain     = "social_strain"
+    COG_LOAD          = "cog_load"
+    APOPTOSIS         = "apoptosis"
+
+class Severity(Enum):
+    WARNING  = "warning"
+    CRITICAL = "critical"
+    COLLAPSE = "collapse"
+
+# ------------------ Data models ------------------
+
+@dataclass
+class Event:
+    ts: float
+    etype: EventType
+    sev: Severity
+    value: float
+    agent: str = "default"
+    ctx: Dict[str, Any] = field(default_factory=dict)
+
+    @property
+    def age(self) -> float:
+        return max(0.0, time.time() - self.ts)
+
+@dataclass
+class MELSignature:
+    etype: EventType
+    warn_to_crit: List[float] = field(default_factory=list)
+    crit_to_collapse: List[float] = field(default_factory=list)
+    samples: int = 0
+    confidence: float = 0.0  # 0..1
+
+    @property
+    def avg_w2c(self) -> float:
+        return statistics.mean(self.warn_to_crit) if self.warn_to_crit else 0.0
+
+    @property
+    def avg_c2x(self) -> float:
+        return statistics.mean(self.crit_to_collapse) if self.crit_to_collapse else 0.0
+
+    @property
+    def total_mel(self) -> float:
+        return self.avg_w2c + self.avg_c2x
+
+    def update_conf(self) -> None:
+        if self.samples < 3:
+            self.confidence = 0.0
+            return
+        var = statistics.pvariance(self.warn_to_crit) if len(self.warn_to_crit) > 1 else 0.0
+        penalty = min(0.5, var / max(1.0, (self.avg_w2c or 1.0))**2)
+        self.confidence = max(0.0, min(1.0, (min(1.0, self.samples / 10.0) - penalty)))
+
+# ------------------ MEL core ------------------
+
+class MELEnhancedReflex:
+    """
+    Learns lag between WARNING → CRITICAL → COLLAPSE for each event type.
+    Provides 'pre-nudge' decisions based on learned lead time and confidence.
+    """
+
+    def __init__(self, lookback_s: float = 600.0, max_events: int = 2000):
+        self.lookback_s = lookback_s
+        self.events: deque[Event] = deque(maxlen=max_events)
+        self.signatures: Dict[EventType, MELSignature] = {e: MELSignature(e) for e in EventType}
+        self.active_warn: Dict[str, Event] = {}  # key: agent|etype
+        self._now = time.time  # for testability
+
+    # ----- logging -----
+
+    def log(self, etype: EventType, sev: Severity, value: float,
+            agent: str = "default", ctx: Optional[Dict[str, Any]] = None) -> Event:
+        ev = Event(ts=self._now(), etype=etype, sev=sev, value=value, agent=agent, ctx=ctx or {})
+        self.events.append(ev)
+        self._update_signatures(ev)
+        self._update_active_warn(ev)
+        self._gc()
+        return ev
+
+    # ----- predictions -----
+
+    def should_pre_nudge(self, etype: EventType, agent: str = "default",
+                         pct: float = 0.7) -> Tuple[bool, float, str]:
+        """
+        Return (should_nudge, confidence, reason).
+        pct: fraction of expected MEL after WARNING at which to trigger pre-nudge.
+        """
+        sig = self.signatures[etype]
+        if sig.confidence < 0.3 or sig.total_mel <= 0.0:
+            return False, 0.0, "insufficient_signal"
+
+        key = f"{agent}|{etype.value}"
+        warn = self.active_warn.get(key)
+        if not warn:
+            return False, 0.0, "no_active_warning"
+
+        elapsed = self._now() - warn.ts
+        trigger_at = sig.total_mel * pct
+        if elapsed >= trigger_at:
+            conf = min(1.0, sig.confidence * (elapsed / max(1e-6, sig.total_mel)))
+            return True, conf, f"elapsed={elapsed:.1f}s trigger={trigger_at:.1f}s"
+        return False, 0.0, f"too_early elapsed={elapsed:.1f}s trigger={trigger_at:.1f}s"
+
+    def prediction(self, etype: EventType, agent: str = "default") -> Optional[Dict[str, Any]]:
+        sig = self.signatures[etype]
+        key = f"{agent}|{etype.value}"
+        warn = self.active_warn.get(key)
+        if not warn or sig.confidence < 0.2 or sig.total_mel <= 0:
+            return None
+        elapsed = self._now() - warn.ts
+        return {
+            "event_type": etype.value,
+            "agent": agent,
+            "warning_ts": warn.ts,
+            "time_since_warning": elapsed,
+            "avg_warn_to_crit": sig.avg_w2c,
+            "avg_crit_to_collapse": sig.avg_c2x,
+            "expected_collapse_in": max(0.0, sig.total_mel - elapsed),
+            "confidence": sig.confidence,
+            "urgency": min(1.0, elapsed / sig.total_mel),
+        }
+
+    # ----- diagnostics -----
+
+    def diagnostics(self) -> Dict[str, Any]:
+        now = self._now()
+        recent = [e for e in self.events if now - e.ts <= 300]
+        counts: Dict[str, int] = defaultdict(int)
+        for e in recent:
+            counts[f"{e.etype.value}:{e.sev.value}"] += 1
+        sigs = {
+            et.value: {
+                "samples": s.samples,
+                "confidence": s.confidence,
+                "avg_warn_to_crit": s.avg_w2c,
+                "avg_crit_to_collapse": s.avg_c2x,
+                "total_mel": s.total_mel,
+            }
+            for et, s in self.signatures.items()
+        }
+        return {
+            "recent_counts": dict(counts),
+            "active_warnings": len(self.active_warn),
+            "signatures": sigs,
+        }
+
+    # ----- internals -----
+
+    def _update_active_warn(self, ev: Event) -> None:
+        key = f"{ev.agent}|{ev.etype.value}"
+        if ev.sev == Severity.WARNING:
+            self.active_warn[key] = ev
+        elif ev.sev in (Severity.CRITICAL, Severity.COLLAPSE):
+            # resolve any outstanding warning of same type/agent
+            self.active_warn.pop(key, None)
+
+    def _update_signatures(self, ev: Event) -> None:
+        sig = self.signatures[ev.etype]
+        if ev.sev == Severity.CRITICAL:
+            w = self._find_prior(ev, Severity.WARNING)
+            if w:
+                sig.warn_to_crit.append(ev.ts - w.ts)
+                sig.samples += 1
+        elif ev.sev == Severity.COLLAPSE:
+            c = self._find_prior(ev, Severity.CRITICAL)
+            w = self._find_prior(ev, Severity.WARNING)
+            if c:
+                sig.crit_to_collapse.append(ev.ts - c.ts)
+            elif w:
+                # direct WARN → COLLAPSE
+                sig.warn_to_crit.append(ev.ts - w.ts)
+                sig.samples += 1
+        sig.update_conf()
+
+    def _find_prior(self, ev: Event, sev: Severity) -> Optional[Event]:
+        cutoff = ev.ts - self.lookback_s
+        for p in reversed(self.events):
+            if p.ts < cutoff or p.ts >= ev.ts:
+                continue
+            if p.agent == ev.agent and p.etype == ev.etype and p.sev == sev:
+                return p
+        return None
+
+    def _gc(self) -> None:
+        cutoff = self._now() - self.lookback_s
+        while self.events and self.events[0].ts < cutoff:
+            self.events.popleft()
