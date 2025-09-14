@@ -1,0 +1,26 @@
+name: Emit receipt
+on:
+  workflow_dispatch: {}   # manual button in Actions
+permissions:
+  contents: write
+jobs:
+  emit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Run receipt generator
+        run: python wire_openline_demo.py
+        env:
+          # Optional: if your OpenLine server is public, add a repo secret OLP_URL and uncomment:
+          # OLP_URL: ${{ secrets.OLP_URL }}
+
+      - name: Commit updated receipt
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "chore: update receipt"
+          file_pattern: docs/receipt.latest.json
