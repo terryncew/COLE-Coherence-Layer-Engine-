@@ -1,15 +1,3 @@
-Nice — you’ve got the hub page live. ✅
-
-What you’re seeing now (just the raw repo names/paths) means the hub is listing your targets, but it’s not yet rendering <openline-card> because either:
-	1.	The HTML doesn’t have the card loop (it only prints the repo names, not the card element).
-	2.	Those repos don’t yet have docs/receipt.latest.json published on Pages.
-
-⸻
-
-Fix path (hub HTML)
-
-Instead of showing plain text, you want something like:
-
 <!doctype html><meta charset="utf-8">
 <title>OpenLine Hub</title>
 <script type="module" src="https://cdn.jsdelivr.net/gh/terryncew/openline-core@main/receipts-kit/openline-card.js"></script>
@@ -36,27 +24,3 @@ repos.forEach(r => {
   cards.appendChild(div);
 });
 </script>
-
-
-⸻
-
-Fix receipts (target repos)
-
-Each repo you listed must have:
-
-/docs/receipt.latest.json
-
-And GitHub Pages turned on (main → /docs). Example URL you should be able to hit directly in the browser:
-
-https://terryncew.github.io/COLE-Coherence-Layer-Engine-/receipt.latest.json
-
-If that 404s, the hub can’t render the card.
-
-⸻
-
-⚡ So:
-	•	Update your openline-hub/docs/index.html with the loop above.
-	•	In each repo (COLE, DSM, tuner, curve), add a starter docs/receipt.latest.json (you can literally paste any valid JSON receipt for now).
-	•	Then refresh the hub — the cards will show.
-
-Want me to hand you a minimal receipt.latest.json you can paste into each repo’s docs/ so they show up immediately?
