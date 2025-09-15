@@ -1,3 +1,7 @@
+![Schema check](https://github.com/terryncew/openline-core/actions/workflows/validate.yml/badge.svg)
+
+**Live hub:** https://terryncew.github.io/openline-hub/
+
 # COLE: Coherence Layer Engine
 
 **“Three Lungs. One Body. Still Breathing.”**
