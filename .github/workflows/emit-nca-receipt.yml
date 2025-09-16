@@ -17,13 +17,18 @@ jobs:
       - name: Install deps
         run: |
           python -m pip install --upgrade pip
-          python -m pip install numpy
+          python -m pip install numpy pynacl
 
       - name: Run NCA sim → docs/receipt.latest.json
         run: python scripts/nca_receipt.py
 
+      - name: Sign receipt (Ed25519)
+        env:
+          RECEIPT_SIGNING_KEY: ${{ secrets.RECEIPT_SIGNING_KEY }}
+        run: python scripts/sign_receipt.py
+
       - name: Commit updated receipt
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
-          commit_message: "chore: update NCA grow/heal receipt"
+          commit_message: "chore: update NCA grow/heal receipt (signed)"
           file_pattern: docs/receipt.latest.json
