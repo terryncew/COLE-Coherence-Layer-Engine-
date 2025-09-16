@@ -2,10 +2,11 @@ name: NCA Grow & Heal → OpenLine receipt
 on:
   workflow_dispatch:
     inputs:
-      pull:   { description: "pull-to-blueprint (0.20–0.40)",    required: false, default: "0.28" }
+      pull:   { description: "pull-to-blueprint (0.20–0.40)",    required: false, default: "0.26" }
       smooth: { description: "smoothing weight (0.24–0.44)",     required: false, default: "0.36" }
-      steps:  { description: "steps (140–280)",                  required: false, default: "220" }
-      noise:  { description: "noise (0.004–0.015)",              required: false, default: "0.008" }
+      coarse: { description: "coarse pull (0.12–0.30)",          required: false, default: "0.22" }
+      steps:  { description: "steps (160–300)",                  required: false, default: "240" }
+      noise:  { description: "noise (0.004–0.012)",              required: false, default: "0.006" }
 
 permissions: { contents: write }
 
@@ -21,6 +22,7 @@ jobs:
         env:
           PULL:   ${{ github.event.inputs.pull }}
           SMOOTH: ${{ github.event.inputs.smooth }}
+          COARSE: ${{ github.event.inputs.coarse }}
           STEPS:  ${{ github.event.inputs.steps }}
           NOISE:  ${{ github.event.inputs.noise }}
         run: python scripts/nca_receipt.py
