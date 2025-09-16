@@ -1,9 +1,25 @@
 {
-  "claim": "Schema smoke test",
-  "because": ["vector check"],
-  "but": [],
-  "so": "ok",
-  "telem": { "delta_scale": 0.0 },
+  "claim": "NCA regenerator heals target after damage",
+  "because": [
+    "Regeneration gain -55457.5% after 160 steps",
+    "Local-only update; noisy healing loop"
+  ],
+  "but": [
+    "Scale drift \u0394_scale = 2.930 (coarse vs direct)"
+  ],
+  "so": "Drift above tolerance \u2014 investigate rule",
+  "telem": {
+    "delta_scale": 2.930221,
+    "regen_error_before": 0.000488,
+    "regen_error_after": 0.271277,
+    "regen_gain": -554.574914,
+    "steps": 160,
+    "n": 64
+  },
   "threshold": 0.03,
-  "model": "openline-core/test"
+  "model": "nca/smooth-life-toy",
+  "attrs": {
+    "cadence": "sim",
+    "n": 64
+  }
 }
