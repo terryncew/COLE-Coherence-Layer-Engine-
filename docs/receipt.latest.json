@@ -1,23 +1,23 @@
 {
   "claim": "NCA regenerator heals target after damage",
   "because": [
-    "Regeneration gain -55457.5% after 160 steps",
-    "Local-only update; noisy healing loop"
+    "Regeneration gain 57.3% after 160 steps",
+    "Local smoothing + frozen blueprint (morphogen) drive healing"
   ],
   "but": [
-    "Scale drift \u0394_scale = 2.930 (coarse vs direct)"
+    "Scale drift \u0394_scale = 0.683 (coarse vs full)"
   ],
   "so": "Drift above tolerance \u2014 investigate rule",
   "telem": {
-    "delta_scale": 2.930221,
-    "regen_error_before": 0.000488,
-    "regen_error_after": 0.271277,
-    "regen_gain": -554.574914,
+    "delta_scale": 0.682585,
+    "regen_error_before": 0.004395,
+    "regen_error_after": 0.001878,
+    "regen_gain": 0.572728,
     "steps": 160,
     "n": 64
   },
-  "threshold": 0.03,
-  "model": "nca/smooth-life-toy",
+  "threshold": 0.06,
+  "model": "nca/smooth-blueprint-toy",
   "attrs": {
     "cadence": "sim",
     "n": 64
