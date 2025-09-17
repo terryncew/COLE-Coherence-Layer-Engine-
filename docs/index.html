@@ -7,28 +7,34 @@
   h1{font-size:28px;margin:0 0 6px}
   p.lead{color:#555;margin:0 0 18px}
   .row{display:flex;gap:16px;flex-wrap:wrap}
-  .tile{flex:1 1 360px; padding:14px;border:1px solid #eee;border-radius:12px;background:#fff}
+  .tile{flex:1 1 360px;padding:14px;border:1px solid #eee;border-radius:12px;background:#fff}
   .muted{color:#777}
   code{background:#f3f3f3;padding:2px 6px;border-radius:6px}
+  .hint{margin-top:8px;padding:10px;border-radius:10px;background:#f7fbff;border:1px solid #e5f0ff}
+  .small{font-size:13px}
 </style>
 
-<!-- Pin to a stable reference (main is fine for now) -->
+<!-- stable loader for the receipt card -->
 <script type="module"
   src="https://cdn.jsdelivr.net/gh/terryncew/openline-core@main/receipts-kit/openline-card.js">
 </script>
 
 <h1>COLE — NCA Grow &amp; Heal</h1>
 <p class="lead">
-  A tiny neural cellular automaton that self-heals after damage, then emits a receipt explaining
-  pass/fail, <em>why</em> it failed (if red), and <em>how to fix</em> (knob hint). All receipts are OpenLine-style.
+  A tiny neural cellular automaton that self-heals after damage, then emits an OpenLine receipt:
+  claim → evidence → caveat → conclusion, plus knobs, provenance, and a suggested <em>next try</em> when not green.
 </p>
 
 <div class="row">
   <div class="tile">
     <div class="muted" style="margin-bottom:8px">Latest receipt</div>
     <openline-card mode="compact" src="./receipt.latest.json"></openline-card>
-    <div class="muted" style="margin-top:8px">
-      Source: <code>docs/receipt.latest.json</code> (written by the “emit-nca-receipt” Action)
+    <div class="muted small" style="margin-top:8px">
+      Source: <code>docs/receipt.latest.json</code> (written by the “NCA Grow &amp; Heal → OpenLine receipt” Action)
+    </div>
+    <div class="hint small" id="patchBox" hidden>
+      <b>Suggested next try</b> (auto-applied on next run):<br>
+      <code id="patchText"></code>
     </div>
   </div>
 
@@ -36,15 +42,28 @@
     <div class="muted" style="margin-bottom:8px">Run it again (serverless)</div>
     <ol style="margin:0 0 10px 18px">
       <li>GitHub → <b>Actions</b> → <i>NCA Grow &amp; Heal → OpenLine receipt</i></li>
-      <li>Click <b>Run workflow</b></li>
+      <li>Tap <b>Run workflow</b></li>
       <li>Refresh this page</li>
     </ol>
-    <div class="muted">
-      If it’s red, the receipt shows the fail reason and a suggested knob change (e.g. <code>+smooth</code>, <code>+coarse</code>, <code>-pull</code>, <code>+steps</code>).
+    <div class="muted small">
+      If a run isn’t green, the receipt explains <em>why</em> and proposes a small knob patch.
+      The next run will pick it up automatically.
     </div>
+    <p class="small" style="margin-top:10px">
+      <a href="./tuning.log.jsonl">Tuning log (JSONL)</a> ·
+      <a href="./proposals.latest.json">Proposed patch (JSON)</a> ·
+      <a href="https://terryncew.github.io/openline-hub/">Hub</a>
+    </p>
   </div>
 </div>
 
-<p class="muted" style="margin-top:16px">
-  Aggregated multi-repo view lives at your hub: <a href="https://terryncew.github.io/openline-hub/">openline-hub</a>.
-</p>
+<script>
+// Show the suggested patch nicely if it exists
+fetch('./receipt.latest.json').then(r => r.json()).then(j => {
+  if (j.next_try && Array.isArray(j.next_try.patch)) {
+    const parts = j.next_try.patch.map(p => `${p.key}→${p.to}`);
+    document.getElementById('patchText').textContent = parts.join(' · ');
+    document.getElementById('patchBox').hidden = false;
+  }
+}).catch(()=>{});
+</script>
