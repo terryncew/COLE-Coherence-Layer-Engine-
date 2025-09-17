@@ -1,26 +1,65 @@
 <!doctype html><meta charset="utf-8">
 <title>OpenLine Hub</title>
-<script type="module" src="https://cdn.jsdelivr.net/gh/terryncew/openline-core@main/receipts-kit/openline-card.js"></script>
+<meta name="viewport" content="width=device-width,initial-scale=1">
 
-<h2>OpenLine Hub</h2>
-<p>Live receipts aggregated from your repos:</p>
+<!-- Card web-component (kept on @main for easiest copy/paste) -->
+<script type="module"
+  src="https://cdn.jsdelivr.net/gh/terryncew/openline-core@main/receipts-kit/openline-card.js">
+</script>
 
-<div id="cards"></div>
+<style>
+  :root { --fg:#111; --muted:#666; --line:#eee; --bg:#fff; }
+  body{font:16px/1.5 -apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif;margin:28px;color:var(--fg);background:var(--bg)}
+  h1{font-size:28px;margin:0 0 8px}
+  p.lead{color:var(--muted);margin:0 0 18px}
+  .grid{display:grid;gap:14px;grid-template-columns:repeat(auto-fill,minmax(320px,1fr))}
+  .tile{padding:14px;border:1px solid var(--line);border-radius:12px;background:#fff}
+  .label{font-weight:600;margin:0 0 8px;font-size:14px}
+  .msg{margin-top:8px;color:#b00;font-size:13px}
+  .links a{margin-right:12px}
+</style>
+
+<h1>OpenLine Hub</h1>
+<p class="lead">
+  Live receipts aggregated from your repos. If a tile shows “No JSON found”, enable Pages in that repo
+  (branch <code>main</code> → folder <code>/docs</code>) and add <code>docs/receipt.latest.json</code>.
+</p>
+
+<div class="links" style="margin:10px 0 18px">
+  <a href="./tuning.log.jsonl">Tuning log (JSONL)</a>
+  <a href="./nca.html">NCA Grow&nbsp;&amp;&nbsp;Heal demo → signed receipt</a>
+</div>
+
+<div id="grid" class="grid"></div>
 
 <script>
 const repos = [
   "COLE-Coherence-Layer-Engine-",
   "dynamic-sentience-maps",
   "terrynce-curve-emergence-tuner",
-  "tuner-engine-or-ContentTuner"
+  "tuner-engine-or-ContentTuner",
 ];
 
-const cards = document.getElementById("cards");
+const grid = document.getElementById("grid");
 
-repos.forEach(r => {
-  const url = `https://terryncew.github.io/${r}/receipt.latest.json`;
-  const div = document.createElement("div");
-  div.innerHTML = `<openline-card mode="compact" src="${url}"></openline-card>`;
-  cards.appendChild(div);
-});
+for (const r of repos) {
+  const src = `https://terryncew.github.io/${r}/receipt.latest.json`;
+
+  const tile  = document.createElement("div"); tile.className  = "tile";
+  const label = document.createElement("div"); label.className = "label";
+  label.textContent = `${r} — receipt.latest.json`;
+
+  const card = document.createElement("openline-card");
+  card.setAttribute("mode","compact");
+  card.setAttribute("src", src);
+
+  // Friendly fallback if JSON missing or fetch fails
+  const msg = document.createElement("div"); msg.className = "msg";
+  const fail = () => { msg.textContent = "No JSON found (enable Pages + add docs/receipt.latest.json)"; };
+  card.addEventListener("olp-error", fail);
+  card.addEventListener("error", fail);
+
+  tile.append(label, card, msg);
+  grid.appendChild(tile);
+}
 </script>
