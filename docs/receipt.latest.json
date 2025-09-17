@@ -1,20 +1,25 @@
 {
   "claim": "NCA regenerator heals target after damage",
   "because": [
-    "Regeneration gain 92.5% after 240 steps",
+    "Regeneration gain 95.0% after 240 steps",
     "Coarse align + local smoothing + blueprint pull (with reflect borders)",
     "knobs: pull=0.26, smooth=0.36, coarse=0.22, noise=0.006",
-    "metric: delta_scale = 1 \u2212 NCC(blur\u03c3=2)  (lower is better)"
+    "metric: delta_scale = 1 \u2212 NCC(blur\u03c3=2) (lower is better)"
   ],
   "but": [
     "\u2014"
   ],
   "so": "OK \u2014 self-heals within envelope tolerance",
+  "goal": {
+    "type": "mask/blueprint",
+    "id": "ring@64",
+    "loss": "1 - NCC(blur\u03c3=2) (lower is better)"
+  },
   "telem": {
-    "regen_error_before": 0.04126,
-    "regen_error_after": 0.003083,
-    "regen_gain": 0.925273,
-    "delta_scale": 0.000869,
+    "regen_error_before": 0.044434,
+    "regen_error_after": 0.002227,
+    "regen_gain": 0.949871,
+    "delta_scale": 0.000268,
     "steps": 240,
     "n": 64,
     "pull": 0.26,
@@ -22,9 +27,38 @@
     "coarse": 0.22,
     "noise": 0.006
   },
+  "env_score": 0.946689,
   "threshold": 0.08,
-  "model": "nca/multiscale-ncc-toy",
+  "model": "nca/multiscale-blueprint-toy",
   "attrs": {
-    "status": "green"
-  }
+    "status": "green",
+    "label": "OK \u2014 self-heals within envelope tolerance"
+  },
+  "program": "pull 0.26\nsmooth 0.36\ncoarse 0.22\nnoise 0.006\n",
+  "provenance": {
+    "code_sha": "b41d85636cdb67f6",
+    "program_sha": "446148f4a7133570"
+  },
+  "morphs": [
+    {
+      "op": "reweight",
+      "target": "pull",
+      "to": 0.26
+    },
+    {
+      "op": "reweight",
+      "target": "smooth",
+      "to": 0.36
+    },
+    {
+      "op": "reweight",
+      "target": "coarse",
+      "to": 0.22
+    },
+    {
+      "op": "reweight",
+      "target": "noise",
+      "to": 0.006
+    }
+  ]
 }
