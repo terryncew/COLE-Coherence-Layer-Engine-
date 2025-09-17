@@ -1,65 +1,50 @@
 <!doctype html><meta charset="utf-8">
-<title>OpenLine Hub</title>
+<title>COLE — NCA Grow & Heal (OpenLine Receipt)</title>
 <meta name="viewport" content="width=device-width,initial-scale=1">
 
-<!-- Card web-component (kept on @main for easiest copy/paste) -->
+<style>
+  body{font:16px/1.45 -apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif;margin:28px;background:#fafafa}
+  h1{font-size:28px;margin:0 0 6px}
+  p.lead{color:#555;margin:0 0 18px}
+  .row{display:flex;gap:16px;flex-wrap:wrap}
+  .tile{flex:1 1 360px; padding:14px;border:1px solid #eee;border-radius:12px;background:#fff}
+  .muted{color:#777}
+  code{background:#f3f3f3;padding:2px 6px;border-radius:6px}
+</style>
+
+<!-- Pin to a stable reference (main is fine for now) -->
 <script type="module"
   src="https://cdn.jsdelivr.net/gh/terryncew/openline-core@main/receipts-kit/openline-card.js">
 </script>
 
-<style>
-  :root { --fg:#111; --muted:#666; --line:#eee; --bg:#fff; }
-  body{font:16px/1.5 -apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif;margin:28px;color:var(--fg);background:var(--bg)}
-  h1{font-size:28px;margin:0 0 8px}
-  p.lead{color:var(--muted);margin:0 0 18px}
-  .grid{display:grid;gap:14px;grid-template-columns:repeat(auto-fill,minmax(320px,1fr))}
-  .tile{padding:14px;border:1px solid var(--line);border-radius:12px;background:#fff}
-  .label{font-weight:600;margin:0 0 8px;font-size:14px}
-  .msg{margin-top:8px;color:#b00;font-size:13px}
-  .links a{margin-right:12px}
-</style>
-
-<h1>OpenLine Hub</h1>
+<h1>COLE — NCA Grow &amp; Heal</h1>
 <p class="lead">
-  Live receipts aggregated from your repos. If a tile shows “No JSON found”, enable Pages in that repo
-  (branch <code>main</code> → folder <code>/docs</code>) and add <code>docs/receipt.latest.json</code>.
+  A tiny neural cellular automaton that self-heals after damage, then emits a receipt explaining
+  pass/fail, <em>why</em> it failed (if red), and <em>how to fix</em> (knob hint). All receipts are OpenLine-style.
 </p>
 
-<div class="links" style="margin:10px 0 18px">
-  <a href="./tuning.log.jsonl">Tuning log (JSONL)</a>
-  <a href="./nca.html">NCA Grow&nbsp;&amp;&nbsp;Heal demo → signed receipt</a>
+<div class="row">
+  <div class="tile">
+    <div class="muted" style="margin-bottom:8px">Latest receipt</div>
+    <openline-card mode="compact" src="./receipt.latest.json"></openline-card>
+    <div class="muted" style="margin-top:8px">
+      Source: <code>docs/receipt.latest.json</code> (written by the “emit-nca-receipt” Action)
+    </div>
+  </div>
+
+  <div class="tile">
+    <div class="muted" style="margin-bottom:8px">Run it again (serverless)</div>
+    <ol style="margin:0 0 10px 18px">
+      <li>GitHub → <b>Actions</b> → <i>NCA Grow &amp; Heal → OpenLine receipt</i></li>
+      <li>Click <b>Run workflow</b></li>
+      <li>Refresh this page</li>
+    </ol>
+    <div class="muted">
+      If it’s red, the receipt shows the fail reason and a suggested knob change (e.g. <code>+smooth</code>, <code>+coarse</code>, <code>-pull</code>, <code>+steps</code>).
+    </div>
+  </div>
 </div>
 
-<div id="grid" class="grid"></div>
-
-<script>
-const repos = [
-  "COLE-Coherence-Layer-Engine-",
-  "dynamic-sentience-maps",
-  "terrynce-curve-emergence-tuner",
-  "tuner-engine-or-ContentTuner",
-];
-
-const grid = document.getElementById("grid");
-
-for (const r of repos) {
-  const src = `https://terryncew.github.io/${r}/receipt.latest.json`;
-
-  const tile  = document.createElement("div"); tile.className  = "tile";
-  const label = document.createElement("div"); label.className = "label";
-  label.textContent = `${r} — receipt.latest.json`;
-
-  const card = document.createElement("openline-card");
-  card.setAttribute("mode","compact");
-  card.setAttribute("src", src);
-
-  // Friendly fallback if JSON missing or fetch fails
-  const msg = document.createElement("div"); msg.className = "msg";
-  const fail = () => { msg.textContent = "No JSON found (enable Pages + add docs/receipt.latest.json)"; };
-  card.addEventListener("olp-error", fail);
-  card.addEventListener("error", fail);
-
-  tile.append(label, card, msg);
-  grid.appendChild(tile);
-}
-</script>
+<p class="muted" style="margin-top:16px">
+  Aggregated multi-repo view lives at your hub: <a href="https://terryncew.github.io/openline-hub/">openline-hub</a>.
+</p>
