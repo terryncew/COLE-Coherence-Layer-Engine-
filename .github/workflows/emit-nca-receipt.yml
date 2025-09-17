@@ -1,32 +1,35 @@
 name: NCA Grow & Heal → OpenLine receipt
 on:
-  workflow_dispatch:
-    inputs:
-      pull:   { description: "pull-to-blueprint (0.20–0.40)",    required: false, default: "0.26" }
-      smooth: { description: "smoothing weight (0.24–0.44)",     required: false, default: "0.36" }
-      coarse: { description: "coarse pull (0.12–0.30)",          required: false, default: "0.22" }
-      steps:  { description: "steps (160–300)",                  required: false, default: "240" }
-      noise:  { description: "noise (0.004–0.012)",              required: false, default: "0.006" }
-
-permissions: { contents: write }
+  workflow_dispatch: {}
+permissions:
+  contents: write
 
 jobs:
   emit:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with: { python-version: '3.11' }
-      - run: python -m pip install --upgrade pip && python -m pip install numpy
+
+      - name: Install deps
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install numpy
+
       - name: Run NCA sim → docs/receipt.latest.json
         env:
-          PULL:   ${{ github.event.inputs.pull }}
-          SMOOTH: ${{ github.event.inputs.smooth }}
-          COARSE: ${{ github.event.inputs.coarse }}
-          STEPS:  ${{ github.event.inputs.steps }}
-          NOISE:  ${{ github.event.inputs.noise }}
+          PULL:   "0.26"
+          SMOOTH: "0.36"
+          COARSE: "0.22"
+          STEPS:  "240"
+          NOISE:  "0.006"
         run: python scripts/nca_receipt.py
-      - uses: stefanzweifel/git-auto-commit-action@v5
+
+      - name: Commit updated receipt
+        uses: stefanzweifel/git-auto-commit-action@v5
         with:
           commit_message: "chore: update NCA grow/heal receipt"
           file_pattern: docs/receipt.latest.json
