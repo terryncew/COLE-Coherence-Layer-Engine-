@@ -1,35 +1,49 @@
 <!doctype html><meta charset="utf-8">
-<title>NCA × OpenLine — Grow & Heal Receipt</title>
+<title>COLE — NCA Grow & Heal (OpenLine Receipt)</title>
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<script type="module" src="https://cdn.jsdelivr.net/gh/terryncew/openline-core@main/receipts-kit/openline-card.js"></script>
-<script type="module">
-import * as ed from "https://cdn.jsdelivr.net/npm/@noble/ed25519@1.7.3/+esm";
-const pill = (txt, bg) => { const el = document.getElementById("pill"); el.textContent = txt; el.style.background=bg; el.style.color="#fff"; };
-const sortObj = (x) => Array.isArray(x) ? x.map(sortObj) : x && typeof x==="object"
-  ? Object.keys(x).sort().reduce((o,k)=>(o[k]=sortObj(x[k]),o),{}) : x;
-(async () => {
-  try {
-    const rec = await (await fetch("./receipt.latest.json", {cache:"no-cache"})).json();
-    const signer = await (await fetch("./signer.json", {cache:"no-cache"})).json().catch(()=>({}));
-    const sig = rec.sig;
-    if (!sig || sig.alg!=="Ed25519") { pill("No signature", "#6c757d"); return; }
-    if (signer.pub_ed25519 && signer.pub_ed25519.toLowerCase() !== sig.key.toLowerCase()) { pill("Signer mismatch", "#dc3545"); return; }
-    const payload = sortObj(Object.fromEntries(Object.entries(rec).filter(([k])=>k!=="sig")));
-    const msg = new TextEncoder().encode(JSON.stringify(payload));
-    const ok = await ed.verify(sig.value, msg, sig.key);
-    pill(ok ? "Verified" : "Invalid", ok ? "#198754" : "#dc3545");
-  } catch(e){ pill("Verify error", "#fd7e14"); console.error(e); }
-})();
+<style>
+  body{font:16px/1.45 -apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif;margin:28px;background:#fafafa}
+  h1{font-size:28px;margin:0 0 6px}
+  p.lead{color:#555;margin:0 0 18px}
+  .row{display:flex;gap:16px;flex-wrap:wrap}
+  .tile{flex:1 1 360px; padding:14px;border:1px solid #eee;border-radius:12px;background:#fff}
+  .muted{color:#777}
+  code{background:#f3f3f3;padding:2px 6px;border-radius:6px}
+</style>
+<script type="module"
+  src="https://cdn.jsdelivr.net/gh/terryncew/openline-core@main/receipts-kit/openline-card.js">
 </script>
 
-<h3 style="font-family:system-ui;margin:16px 0">
-  NCA × OpenLine — Latest receipt
-  <span id="pill" style="margin-left:8px;padding:4px 8px;border-radius:999px;font:12px system-ui;background:#aaa;color:#fff">checking…</span>
-</h3>
+<h1>COLE — NCA Grow &amp; Heal</h1>
+<p class="lead">
+  A tiny neural cellular automaton that self-heals after damage and emits a signed-style receipt:
+  pass/fail, <em>why</em> it failed (if red), and <em>how to fix</em> (knob hint). Now includes
+  <b>emergence</b> / <b>emergency</b> signals derived from the same telemetry.
+</p>
 
-<openline-card mode="compact" src="./receipt.latest.json"></openline-card>
+<div class="row">
+  <div class="tile">
+    <div class="muted" style="margin-bottom:8px">Latest receipt</div>
+    <openline-card mode="compact" src="./receipt.latest.json"></openline-card>
+    <div class="muted" style="margin-top:8px">
+      Source: <code>docs/receipt.latest.json</code> (written by the “emit-nca-receipt” Action)
+    </div>
+  </div>
 
-<p style="font:14px system-ui;color:#666;margin-top:16px">
-  Generated in GitHub Actions, signed (Ed25519), and served via GitHub Pages.
-  <a href="./index.html">← Back to Hub</a>
+  <div class="tile">
+    <div class="muted" style="margin-bottom:8px">Run it again (serverless)</div>
+    <ol style="margin:0 0 10px 18px">
+      <li>GitHub → <b>Actions</b> → <i>NCA Grow &amp; Heal → OpenLine receipt</i></li>
+      <li>Click <b>Run workflow</b></li>
+      <li>Refresh this page</li>
+    </ol>
+    <div class="muted">
+      If it’s red, the receipt shows the fail reason and a knob hint (e.g. <code>+smooth</code>, <code>+coarse</code>, <code>-pull</code>, <code>+steps</code>).
+      <br>New: <code>emergence</code> (E, phi*, tau) and <code>emergency</code> (Xi, flags) fields appear in the JSON.
+    </div>
+  </div>
+</div>
+
+<p class="muted" style="margin-top:16px">
+  Aggregated view: <a href="https://terryncew.github.io/openline-hub/">openline-hub</a>.
 </p>
