@@ -1,0 +1,54 @@
+name: Self-tune NCA → Receipt
+on:
+  workflow_dispatch: {}
+  schedule:
+    - cron: "0 */12 * * *"   # optional: auto-run twice a day
+
+permissions:
+  contents: write
+
+jobs:
+  tune:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.11' }
+
+      - name: Install deps
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install numpy pynacl
+
+      - name: Self-tune and emit receipt
+        run: python scripts/self_tune.py
+
+      # Optional: sign the receipt (add secret RECEIPT_PRIV)
+      - name: Sign receipt (optional)
+        if: ${{ secrets.RECEIPT_PRIV != '' }}
+        run: |
+          python - <<'PY'
+          import json, os, time, binascii
+          from pathlib import Path
+          from nacl.signing import SigningKey
+          p = Path("docs/receipt.latest.json"); data = p.read_bytes()
+          sk = SigningKey(binascii.unhexlify(os.environ["RECEIPT_PRIV"]))
+          sig = sk.sign(data).signature.hex()
+          pub = sk.verify_key.encode().hex()
+          rec = json.loads(data.decode())
+          rec["sig"] = {"alg":"ed25519","ts":int(time.time()),"pub":pub,"sig":sig}
+          p.write_text(json.dumps(rec, indent=2), encoding="utf-8")
+          print("[ok] signed")
+          PY
+        env:
+          RECEIPT_PRIV: ${{ secrets.RECEIPT_PRIV }}
+
+      - name: Commit artifacts
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "chore: self-tune → update receipt, params, log"
+          file_pattern: |
+            docs/receipt.latest.json
+            docs/tuning.log.jsonl
+            params.json
