@@ -2,8 +2,10 @@ name: Emit receipt (COLE telem)
 
 on:
   workflow_dispatch: {}
+
 permissions:
   contents: write
+
 concurrency:
   group: cole-receipt
   cancel-in-progress: true
@@ -16,24 +18,37 @@ jobs:
 
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: '3.11'
 
       - name: Run COLE emitter
+        shell: bash
         run: |
+          set -euo pipefail
           python -V
-          if [ ! -f scripts/cole_emit_receipt.py ]; then
-            echo "::error ::scripts/cole_emit_receipt.py not found"
+          if [[ ! -f scripts/cole_emit_receipt.py ]]; then
+            echo "::error file=scripts/cole_emit_receipt.py::emitter not found"
             exit 1
           fi
           python scripts/cole_emit_receipt.py
           test -f docs/receipt.latest.json || (echo "::error ::receipt not written" && exit 1)
           echo "[ok] wrote docs/receipt.latest.json"
-          jq -r '"gain=\(.telem.regen_gain)// drift=\(.telem.delta_scale)// status=\(.attrs.status//.status//"")"' docs/receipt.latest.json || true
+          # print a quick summary without jq
+          python - <<'PY'
+          import json
+          j=json.load(open('docs/receipt.latest.json'))
+          t=j.get('telem',{})
+          status=(j.get('attrs',{}) or {}).get('status') or j.get('status','')
+          print(f"gain={t.get('regen_gain')} // drift={t.get('delta_scale')} // status={status}")
+          PY
 
       - name: Commit receipt
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add docs/receipt.latest.json
-          git diff --staged --quiet && echo "no changes" || git commit -m "ci: update COLE receipt"
-          git push
+          if git diff --staged --quiet; then
+            echo "no changes"
+          else
+            git commit -m "ci: update COLE receipt"
+            git push
+          fi
