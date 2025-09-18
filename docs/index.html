@@ -6,11 +6,10 @@
   :root{--bg:#fafafa;--card:#fff;--muted:#6a6a6a;--ok:#0a0;--warn:#c80;--bad:#c00;--line:#eee}
   body{font:16px/1.45 -apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif;margin:28px;background:var(--bg)}
   h1{font-size:28px;margin:0 0 6px}
-  p.lead{color:#555;margin:0 0 18px}
+  p.lead{color:#555;margin:0 0 18px;max-width:60ch}
   .row{display:flex;gap:16px;flex-wrap:wrap}
   .tile{flex:1 1 360px;padding:14px;border:1px solid var(--line);border-radius:12px;background:var(--card)}
-  .muted{color:var(--muted)}
-  .small{font-size:13px}
+  .muted{color:var(--muted)} .small{font-size:13px}
   .pill{display:inline-flex;align-items:center;gap:8px;padding:6px 10px;border:1px solid var(--line);border-radius:999px;font-size:13px}
   .dot{width:8px;height:8px;border-radius:50%}
   .ok{color:var(--ok)} .warn{color:var(--warn)} .bad{color:var(--bad)}
@@ -21,7 +20,7 @@
   .err{padding:10px;border-radius:10px;background:#fff3f3;border:1px solid #ffd0d0}
 </style>
 
-<!-- Define the OpenLine card (we only instantiate it after we confirm JSON exists) -->
+<!-- Load OpenLine card only after we confirm JSON exists -->
 <script type="module" src="https://cdn.jsdelivr.net/gh/terryncew/openline-core@main/receipts-kit/openline-card.js"></script>
 
 <h1>Engine</h1>
@@ -40,10 +39,10 @@
     </div>
 
     <div class="muted" style="margin:10px 0 6px">Latest receipt</div>
-    <!-- We replace this box with the card once JSON is confirmed -->
+    <!-- Replaced by card after JSON check -->
     <div id="cardBox" class="muted">Loading…</div>
 
-    <!-- Why / Fix (plain English, 1 line each) -->
+    <!-- Why / Fix (plain English, one line each) -->
     <div class="hint small" id="whyBox" hidden><b>Why not green:</b> <span id="whyText"></span></div>
     <div class="hint small" id="fixBox" hidden><b>Try next:</b> <span id="fixText"></span></div>
 
@@ -81,11 +80,11 @@
 <script>
 (function(){
   const $ = id => document.getElementById(id);
-  const pill = $('statusPill'), dot = $('statusDot'), txt = $('statusText');
-  const whyBox = $('whyBox'), whyText = $('whyText');
-  const fixBox = $('fixBox'), fixText = $('fixText');
-  const patchBox = $('patchBox'), patchText = $('patchText');
-  const gl = $('glance'), cardBox = $('cardBox');
+  const pill=$('statusPill'), dot=$('statusDot'), txt=$('statusText');
+  const whyBox=$('whyBox'), whyText=$('whyText');
+  const fixBox=$('fixBox'), fixText=$('fixText');
+  const patchBox=$('patchBox'), patchText=$('patchText');
+  const gl=$('glance'), cardBox=$('cardBox');
 
   const color = s => (s==='green'?'ok':(s==='amber'?'warn':'bad'));
   const dotColor = s => ({green:'#0a0', amber:'#c80', red:'#c00'}[s]||'#bbb');
@@ -94,26 +93,22 @@
   const url = new URL('receipt.latest.json', location.href);
   url.searchParams.set('v', Date.now().toString());
 
-  fetch(url, {cache:'no-store'})
-    .then(r=>{
-      if(!r.ok) throw new Error('HTTP '+r.status);
-      return r.json();
-    })
+  fetch(url,{cache:'no-store'})
+    .then(r=>{ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
     .then(j=>{
-      // Insert the OpenLine card only after JSON exists
-      const card = document.createElement('openline-card');
+      // Insert the card once JSON exists
+      const card=document.createElement('openline-card');
       card.setAttribute('mode','compact');
       card.setAttribute('src', url.pathname + url.search);
       cardBox.replaceChildren(card);
 
       const t = j.telem || {};
-      const gain  = Number(t.regen_gain || 0);
-      const drift = Number(t.delta_scale || 0);
-      const thresh = Number(j.threshold || 0.15);
+      const gain   = Number(t.regen_gain || 0);
+      const drift  = Number(t.delta_scale || 0);
+      const thresh = Number(j.threshold ?? 0.15);
 
-      // Status: prefer explicit, else derive
-      let s = (j.attrs && j.attrs.status) || j.status || (j.emergence && j.emergence.status);
-      if (!s) s = (gain <= 0.02) ? 'red' : ((gain >= 0.20 && drift <= 0.15) ? 'green' : 'amber');
+      // ONE ground truth: derive status from telemetry (so card and pill always match)
+      const s = (gain <= 0.02) ? 'red' : ((gain >= 0.20 && drift <= thresh) ? 'green' : 'amber');
 
       // Status pill
       txt.textContent = s;
@@ -121,14 +116,14 @@
       pill.className = 'pill ' + color(s);
       pill.hidden = false;
 
-      // Why (one crisp reason)
-      let why = Array.isArray(j.but) && j.but.length ? j.but[0] : '';
+      // Why (single crisp reason)
+      let why = Array.isArray(j.but) && j.but[0] ? j.but[0] : '';
       if (!why) {
-        if (drift && thresh && drift > thresh) why = `drift Δ_scale ${drift.toFixed(3)} > threshold ${thresh.toFixed(3)}`;
+        if (drift > thresh) why = `drift Δ_scale ${drift.toFixed(3)} > threshold ${thresh.toFixed(3)}`;
         else if (gain <= 0.02) why = 'no meaningful gain';
         else if (gain < 0.20)  why = `low gain ${gain.toFixed(3)}`;
       }
-      if (s!=='green' && why) { whyText.textContent = why; whyBox.hidden = false; }
+      if (s!=='green' && why){ whyText.textContent = why; whyBox.hidden = false; }
 
       // Fix (from receipt or generic)
       let fix = (typeof j.so === 'string' && j.so.trim()) ? j.so.trim() : '';
@@ -136,7 +131,7 @@
         if (drift > thresh) fix = 'increase smoothing/coarse or reduce pull; add steps if edges are oversharp';
         else if (gain < 0.20) fix = 'bump steps or lower noise; check blend weights';
       }
-      if (s!=='green' && fix) { fixText.textContent = fix; fixBox.hidden = false; }
+      if (s!=='green' && fix){ fixText.textContent = fix; fixBox.hidden = false; }
 
       // Optional patch display
       if (j.next_try && Array.isArray(j.next_try.patch)) {
@@ -145,11 +140,11 @@
       }
 
       // Glance telemetry
-      $('g-gain').textContent  = gain.toFixed(3);
-      $('g-delta').textContent = drift.toFixed(3);
-      $('g-thresh').textContent= thresh.toFixed(3);
-      $('g-steps').textContent = Number(t.steps||0);
-      $('g-n').textContent     = Number(t.n||0);
+      $('g-gain').textContent   = gain.toFixed(3);
+      $('g-delta').textContent  = drift.toFixed(3);
+      $('g-thresh').textContent = thresh.toFixed(3);
+      $('g-steps').textContent  = Number(t.steps || 0);
+      $('g-n').textContent      = Number(t.n || 0);
       gl.hidden = false;
     })
     .catch(err=>{
