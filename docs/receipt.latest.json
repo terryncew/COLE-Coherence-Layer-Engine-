@@ -6,9 +6,9 @@
     "knobs: pull=0.26, smooth=0.36, coarse=0.22, noise=0.006"
   ],
   "but": [
-    "Fail reason: multiscale drift Δ_scale=0.075 > 0.060 (edges too sharp → increase smoothing/coarse, or reduce pull)"
+    "Fail reason: multiscale drift \u0394_scale=0.075 > 0.060 (edges too sharp \u2192 increase smoothing/coarse, or reduce pull)"
   ],
-  "so": "Try: +0.04 smooth, +0.06 coarse, +40 steps; or -0.04 pull.",
+  "so": "Try: +0.04 smooth, +0.06 coarse, +40 steps; or \u22120.04 pull.",
   "telem": {
     "regen_error_before": 0.044434,
     "regen_error_after": 0.002227,
@@ -20,19 +20,12 @@
     "smooth": 0.36,
     "coarse": 0.22,
     "noise": 0.006
-  ],
-  "threshold": 0.060,
+  },
+  "threshold": 0.06,
   "model": "nca/multiscale-blueprint-toy",
   "attrs": {
-    "status": "amber"
-  },
-  "next_try": {
-    "patch": [
-      { "key": "smooth", "to": 0.40 },
-      { "key": "coarse", "to": 0.28 },
-      { "key": "steps",  "to": 280  },
-      { "key": "pull",   "to": 0.22 }
-    ]
+    "status": "red",
+    "emerge_status": "emerging"
   },
   "emergence": {
     "E": 0.879,
