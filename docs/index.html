@@ -18,12 +18,11 @@
   .hint{margin-top:8px;padding:10px;border-radius:10px;background:#f7fbff;border:1px solid #e5f0ff}
   .kv{display:flex;gap:10px;flex-wrap:wrap;margin-top:6px}
   .kv span{background:#f5f5f5;border:1px solid #eee;border-radius:8px;padding:4px 8px}
+  .err{padding:10px;border-radius:10px;background:#fff3f3;border:1px solid #ffd0d0}
 </style>
 
-<!-- OpenLine card web component -->
-<script type="module"
-  src="https://cdn.jsdelivr.net/gh/terryncew/openline-core@main/receipts-kit/openline-card.js">
-</script>
+<!-- Define the OpenLine card (we only instantiate it after we confirm JSON exists) -->
+<script type="module" src="https://cdn.jsdelivr.net/gh/terryncew/openline-core@main/receipts-kit/openline-card.js"></script>
 
 <h1>Engine</h1>
 <p class="lead">
@@ -34,15 +33,17 @@
 
 <div class="row">
   <div class="tile">
+    <!-- Status -->
     <div class="pill" id="statusPill" hidden>
       <span class="dot" id="statusDot"></span>
       <span id="statusText">status</span>
     </div>
 
     <div class="muted" style="margin:10px 0 6px">Latest receipt</div>
-    <openline-card mode="compact" src="./receipt.latest.json"></openline-card>
+    <!-- We replace this box with the card once JSON is confirmed -->
+    <div id="cardBox" class="muted">Loading…</div>
 
-    <!-- Why / Fix (always in plain English, 1 line each) -->
+    <!-- Why / Fix (plain English, 1 line each) -->
     <div class="hint small" id="whyBox" hidden><b>Why not green:</b> <span id="whyText"></span></div>
     <div class="hint small" id="fixBox" hidden><b>Try next:</b> <span id="fixText"></span></div>
 
@@ -73,6 +74,7 @@
       <li>Refresh this page</li>
     </ol>
     <p class="small muted">Green = invariants satisfied. Amber/Red = the pill explains the exact miss and the fix.</p>
+    <p class="small"><a id="lnk-log" href="./tuning.log.jsonl">Tuning log</a> · <a id="lnk-prop" href="./proposals.latest.json">Proposed patch</a></p>
   </div>
 </div>
 
@@ -83,18 +85,31 @@
   const whyBox = $('whyBox'), whyText = $('whyText');
   const fixBox = $('fixBox'), fixText = $('fixText');
   const patchBox = $('patchBox'), patchText = $('patchText');
-  const gl = $('glance');
+  const gl = $('glance'), cardBox = $('cardBox');
 
   const color = s => (s==='green'?'ok':(s==='amber'?'warn':'bad'));
   const dotColor = s => ({green:'#0a0', amber:'#c80', red:'#c00'}[s]||'#bbb');
 
-  fetch('./receipt.latest.json',{cache:'no-cache'})
-    .then(r=> r.ok ? r.json() : Promise.reject())
+  // cache-bust so Safari/iOS won’t hold a stale 404
+  const url = new URL('receipt.latest.json', location.href);
+  url.searchParams.set('v', Date.now().toString());
+
+  fetch(url, {cache:'no-store'})
+    .then(r=>{
+      if(!r.ok) throw new Error('HTTP '+r.status);
+      return r.json();
+    })
     .then(j=>{
+      // Insert the OpenLine card only after JSON exists
+      const card = document.createElement('openline-card');
+      card.setAttribute('mode','compact');
+      card.setAttribute('src', url.pathname + url.search);
+      cardBox.replaceChildren(card);
+
       const t = j.telem || {};
       const gain  = Number(t.regen_gain || 0);
       const drift = Number(t.delta_scale || 0);
-      const thresh = Number(j.threshold || 0.15); // default if absent
+      const thresh = Number(j.threshold || 0.15);
 
       // Status: prefer explicit, else derive
       let s = (j.attrs && j.attrs.status) || j.status || (j.emergence && j.emergence.status);
@@ -137,6 +152,18 @@
       $('g-n').textContent     = Number(t.n||0);
       gl.hidden = false;
     })
-    .catch(()=>{ /* keep page clean if first run hasn't written receipt */ });
+    .catch(err=>{
+      cardBox.innerHTML =
+        `<div class="err"><b>No JSON found</b> at <code>${url.pathname}</code> (${err.message}).
+          Run <i>Actions → Emit receipt (COLE telem)</i> or check the file path.</div>`;
+    });
+
+  // Hide optional links if missing
+  async function hideIfMissing(id, path){
+    try{ const r = await fetch(path,{method:'HEAD',cache:'no-store'}); if(!r.ok) $(id).style.display='none'; }
+    catch{ $(id).style.display='none'; }
+  }
+  hideIfMissing('lnk-log','./tuning.log.jsonl');
+  hideIfMissing('lnk-prop','./proposals.latest.json');
 })();
 </script>
