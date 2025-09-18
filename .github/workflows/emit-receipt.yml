@@ -1,26 +1,39 @@
-name: Emit receipt
+name: Emit receipt (COLE telem)
+
 on:
-  workflow_dispatch: {}   # manual button in Actions
+  workflow_dispatch: {}
 permissions:
   contents: write
+concurrency:
+  group: cole-receipt
+  cancel-in-progress: true
+
 jobs:
-  emit:
+  run:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: "3.11"
 
-      - name: Run receipt generator
-        run: python wire_openline_demo.py
-        env:
-          # Optional: if your OpenLine server is public, add a repo secret OLP_URL and uncomment:
-          # OLP_URL: ${{ secrets.OLP_URL }}
+      - name: Run COLE emitter
+        run: |
+          python -V
+          if [ ! -f scripts/cole_emit_receipt.py ]; then
+            echo "::error ::scripts/cole_emit_receipt.py not found"
+            exit 1
+          fi
+          python scripts/cole_emit_receipt.py
+          test -f docs/receipt.latest.json || (echo "::error ::receipt not written" && exit 1)
+          echo "[ok] wrote docs/receipt.latest.json"
+          jq -r '"gain=\(.telem.regen_gain)// drift=\(.telem.delta_scale)// status=\(.attrs.status//.status//"")"' docs/receipt.latest.json || true
 
-      - name: Commit updated receipt
-        uses: stefanzweifel/git-auto-commit-action@v5
-        with:
-          commit_message: "chore: update receipt"
-          file_pattern: docs/receipt.latest.json
+      - name: Commit receipt
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/receipt.latest.json
+          git diff --staged --quiet && echo "no changes" || git commit -m "ci: update COLE receipt"
+          git push
