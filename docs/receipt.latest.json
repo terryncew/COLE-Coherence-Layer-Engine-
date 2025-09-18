@@ -1,43 +1,36 @@
-{
-  "claim": "NCA regenerator heals target after damage",
-  "because": [
-    "Regeneration gain 95.0% after 240 steps",
-    "Local smoothing + frozen blueprint + coarse pull drive healing",
-    "knobs: pull=0.26, smooth=0.36, coarse=0.22, noise=0.006"
-  ],
-  "but": [
-    "Fail reason: multiscale drift \u0394_scale=0.075 > 0.060 (edges too sharp \u2192 increase smoothing/coarse, or reduce pull)"
-  ],
-  "so": "Try: +0.04 smooth, +0.06 coarse, +40 steps; or \u22120.04 pull.",
-  "telem": {
-    "regen_error_before": 0.044434,
-    "regen_error_after": 0.002227,
-    "regen_gain": 0.949872,
-    "delta_scale": 0.075032,
-    "steps": 240,
-    "n": 64,
-    "pull": 0.26,
-    "smooth": 0.36,
-    "coarse": 0.22,
-    "noise": 0.006
-  },
-  "threshold": 0.06,
-  "model": "nca/multiscale-blueprint-toy",
-  "attrs": {
-    "status": "red",
-    "emerge_status": "emerging"
-  },
-  "emergence": {
-    "E": 0.879,
-    "dE_dt": 0.0,
-    "C": 0.925,
-    "phi_star": 0.925,
-    "tau": 0.333,
-    "status": "emerging"
-  },
-  "emergency": {
-    "Xi": 0.075,
-    "dXi_dt": 0.0,
-    "flags": []
-  }
-}
+name: Emit receipt (COLE telem)
+
+on:
+  workflow_dispatch: {}
+permissions:
+  contents: write
+concurrency:
+  group: cole-receipt
+  cancel-in-progress: true
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+
+      - name: Run COLE emitter
+        run: |
+          python -V
+          if [ ! -f scripts/cole_emit_receipt.py ]; then
+            echo "::error ::scripts/cole_emit_receipt.py not found"
+            exit 1
+          fi
+          python scripts/cole_emit_receipt.py
+          cat docs/receipt.latest.json || true
+
+      - name: Commit receipt
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/receipt.latest.json
+          git diff --staged --quiet && echo "no changes" || git commit -m "ci: update COLE receipt"
+          git push
