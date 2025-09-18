@@ -24,8 +24,15 @@
   "threshold": 0.06,
   "model": "nca/multiscale-blueprint-toy",
   "attrs": {
-    "status": "red",
-    "emerge_status": "emerging"
+    "status": "amber"
+  },
+  "next_try": {
+    "patch": [
+      { "key": "smooth", "to": 0.40 },
+      { "key": "coarse", "to": 0.28 },
+      { "key": "steps",  "to": 280 }
+    ],
+    "note": "If edges still oversharp, try pull→0.22."
   },
   "emergence": {
     "E": 0.879,
