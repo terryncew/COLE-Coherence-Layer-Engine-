@@ -1,5 +1,5 @@
 <!doctype html><meta charset="utf-8">
-<title>COLE — NCA Grow & Heal (OpenLine Receipt)</title>
+<title>COLE — Coherence Layer Engine (OpenLine Receipt)</title>
 <meta name="viewport" content="width=device-width,initial-scale=1">
 
 <style>
@@ -12,17 +12,19 @@
   code{background:#f3f3f3;padding:2px 6px;border-radius:6px}
   .hint{margin-top:8px;padding:10px;border-radius:10px;background:#f7fbff;border:1px solid #e5f0ff}
   .small{font-size:13px}
+  .ok{color:#0a0} .warn{color:#c80} .bad{color:#c00}
 </style>
 
-<!-- stable loader for the receipt card -->
+<!-- OpenLine card web component (you already use this) -->
 <script type="module"
   src="https://cdn.jsdelivr.net/gh/terryncew/openline-core@main/receipts-kit/openline-card.js">
 </script>
 
-<h1>COLE — NCA Grow &amp; Heal</h1>
+<h1>COLE — Coherence Layer Engine</h1>
 <p class="lead">
-  A tiny neural cellular automaton that self-heals after damage, then emits an OpenLine receipt:
-  claim → evidence → caveat → conclusion, plus knobs, provenance, and a suggested <em>next try</em> when not green.
+  Three experts (Id / Ego / Superego) each propose a move; COLE blends them in real time using live signals:
+  φ* (coherence-per-cost) gets rewarded, κ (curvature/jerk) and ε (noise) get penalized.
+  The result is a steadier system without brittle mode switches. Each run emits a one-card OpenLine receipt.
 </p>
 
 <div class="row">
@@ -30,40 +32,81 @@
     <div class="muted" style="margin-bottom:8px">Latest receipt</div>
     <openline-card mode="compact" src="./receipt.latest.json"></openline-card>
     <div class="muted small" style="margin-top:8px">
-      Source: <code>docs/receipt.latest.json</code> (written by the “NCA Grow &amp; Heal → OpenLine receipt” Action)
+      Source: <code>docs/receipt.latest.json</code>
+      (written by the COLE emitter)
     </div>
+
+    <!-- Optional: show suggested patch if your receipt includes next_try -->
     <div class="hint small" id="patchBox" hidden>
       <b>Suggested next try</b> (auto-applied on next run):<br>
       <code id="patchText"></code>
+    </div>
+
+    <!-- Optional quick stats if you want a glance without opening JSON -->
+    <div class="small" id="glance" hidden style="margin-top:8px">
+      <span class="muted">glance:</span>
+      <span id="g-status"></span> ·
+      gain <span id="g-gain"></span> ·
+      Δ_scale <span id="g-delta"></span>
     </div>
   </div>
 
   <div class="tile">
     <div class="muted" style="margin-bottom:8px">Run it again (serverless)</div>
     <ol style="margin:0 0 10px 18px">
-      <li>GitHub → <b>Actions</b> → <i>NCA Grow &amp; Heal → OpenLine receipt</i></li>
+      <li>GitHub → <b>Actions</b> → <i>Emit receipt (COLE telem)</i></li>
       <li>Tap <b>Run workflow</b></li>
       <li>Refresh this page</li>
     </ol>
     <div class="muted small">
-      If a run isn’t green, the receipt explains <em>why</em> and proposes a small knob patch.
-      The next run will pick it up automatically.
+      If a run isn’t green, the receipt explains <em>why</em> and what to try next. If you’re running locally:
+      <code>python scripts/cole_emit_receipt.py</code>
     </div>
-    <p class="small" style="margin-top:10px">
-      <a href="./tuning.log.jsonl">Tuning log (JSONL)</a> ·
-      <a href="./proposals.latest.json">Proposed patch (JSON)</a> ·
+    <p class="small" style="margin-top:10px" id="links">
+      <a id="lnk-log" href="./tuning.log.jsonl">Tuning log (JSONL)</a> ·
+      <a id="lnk-prop" href="./proposals.latest.json">Proposed patch (JSON)</a> ·
       <a href="https://terryncew.github.io/openline-hub/">Hub</a>
     </p>
   </div>
 </div>
 
 <script>
-// Show the suggested patch nicely if it exists
-fetch('./receipt.latest.json').then(r => r.json()).then(j => {
-  if (j.next_try && Array.isArray(j.next_try.patch)) {
-    const parts = j.next_try.patch.map(p => `${p.key}→${p.to}`);
-    document.getElementById('patchText').textContent = parts.join(' · ');
-    document.getElementById('patchBox').hidden = false;
+(async ()=>{
+  // Load the receipt for optional extras (won't break if absent fields)
+  try {
+    const r = await fetch('./receipt.latest.json', {cache:'no-cache'});
+    if (!r.ok) throw new Error();
+    const j = await r.json();
+
+    // Suggested patch
+    if (j.next_try && Array.isArray(j.next_try.patch)) {
+      const parts = j.next_try.patch.map(p => `${p.key}→${p.to}`);
+      patchText.textContent = parts.join(' · ');
+      patchBox.hidden = false;
+    }
+
+    // Quick glance stats
+    if (j.telem) {
+      const s = (j.attrs && j.attrs.status) || 'unknown';
+      gStatus = document.getElementById('g-status');
+      gGain   = document.getElementById('g-gain');
+      gDelta  = document.getElementById('g-delta');
+      gStatus.textContent = s;
+      gStatus.className = (s==='green'?'ok':(s==='amber'?'warn':(s==='red'?'bad':'')));
+      gGain.textContent  = (+j.telem.regen_gain).toFixed(3);
+      gDelta.textContent = (+j.telem.delta_scale).toFixed(3);
+      document.getElementById('glance').hidden = false;
+    }
+  } catch (_) {}
+
+  // Hide links that don't exist in this repo (e.g., NCA-only artifacts)
+  async function hideIfMissing(id, path) {
+    try {
+      const r = await fetch(path, {method:'HEAD', cache:'no-cache'});
+      if (!r.ok) document.getElementById(id).style.display = 'none';
+    } catch { document.getElementById(id).style.display = 'none'; }
   }
-}).catch(()=>{});
+  hideIfMissing('lnk-log','./tuning.log.jsonl');
+  hideIfMissing('lnk-prop','./proposals.latest.json');
+})();
 </script>
