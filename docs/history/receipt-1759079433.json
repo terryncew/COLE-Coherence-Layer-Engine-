@@ -1,0 +1,99 @@
+{
+  "claim": "NCA regenerator heals target after damage",
+  "because": [
+    "Regeneration gain 95.0% after 240 steps",
+    "Local smoothing + frozen blueprint + coarse pull drive healing",
+    "knobs: pull=0.26, smooth=0.36, coarse=0.22, noise=0.006"
+  ],
+  "but": [
+    "Fail reason: multiscale drift \u0394_scale=0.075 > 0.060 (edges too sharp \u2192 increase smoothing/coarse, or reduce pull)"
+  ],
+  "so": "Try: +0.04 smooth, +0.06 coarse, +40 steps; or \u22120.04 pull.",
+  "telem": {
+    "regen_error_before": 0.044434,
+    "regen_error_after": 0.002227,
+    "regen_gain": 0.949872,
+    "delta_scale": 0.075032,
+    "steps": 240,
+    "n": 64,
+    "pull": 0.26,
+    "smooth": 0.36,
+    "coarse": 0.22,
+    "noise": 0.006
+  },
+  "threshold": 0.06,
+  "model": "nca/multiscale-blueprint-toy",
+  "policy": {
+    "license": "OLH-1.0",
+    "broker_ok": true,
+    "use": {
+      "train": true,
+      "share": "internal",
+      "sale": true
+    },
+    "retention_days": 365
+  },
+  "attrs": {
+    "status": "amber"
+  },
+  "next_try": {
+    "patch": [
+      {
+        "key": "smooth",
+        "to": 0.4
+      },
+      {
+        "key": "coarse",
+        "to": 0.28
+      },
+      {
+        "key": "steps",
+        "to": 280
+      }
+    ],
+    "note": "If edges still oversharp, try pull\u21920.22."
+  },
+  "emergence": {
+    "E": 0.879,
+    "dE_dt": 0.0,
+    "C": 0.925,
+    "phi_star": 0.925,
+    "tau": 0.333,
+    "status": "emerging"
+  },
+  "emergency": {
+    "Xi": 0.075,
+    "dXi_dt": 0.0,
+    "flags": []
+  },
+  "prebreach_indicators": {
+    "kappa_accel": 0.0,
+    "variance_spike": 0.0,
+    "drift_speedup": 0.0
+  },
+  "training_evolution": {
+    "loss_trajectory_shape": {
+      "monotone": false,
+      "inflections": 2,
+      "largest_jump": 0.04
+    },
+    "policy_flips_per_epoch": 0
+  },
+  "geometry_attestation": [
+    {
+      "layer": "update.conv",
+      "spectral_max": 1.3,
+      "orthogonality_error": 0.02,
+      "lipschitz_budget_used": 0.41
+    }
+  ],
+  "topo": {
+    "kappa": 0.1,
+    "chi": 0.1,
+    "eps": 0.05,
+    "rigidity": 0.5,
+    "D_topo": 0.0,
+    "H": 0.975
+  },
+  "receipt_version": "olr/1.2"
+}
