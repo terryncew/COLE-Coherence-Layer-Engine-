@@ -75,6 +75,15 @@
     <p class="small muted">Green = invariants satisfied. Amber/Red = the pill explains the exact miss and the fix.</p>
     <p class="small"><a id="lnk-log" href="./tuning.log.jsonl">Tuning log</a> · <a id="lnk-prop" href="./proposals.latest.json">Proposed patch</a></p>
   </div>
+
+  <!-- NEW: Invariants & Topology tile -->
+  <div class="tile" id="inv-topo" hidden>
+    <div class="muted" style="margin-bottom:6px">Invariants & Topology</div>
+    <div class="small" id="geom-line">geometry: <b id="geom-worst">n/a</b> cap usage</div>
+    <div class="small">evolution: inflections <b id="evo-inf">0</b> · flips/epoch <b id="evo-flips">0</b></div>
+    <div class="small">defect: <b id="def-class">–</b></div>
+    <div class="small">H <b id="H">–</b> · κ <b id="K">–</b> · χ <b id="X">–</b> · ε <b id="E">–</b> · D <b id="D">–</b> · R <b id="R">–</b></div>
+  </div>
 </div>
 
 <script>
@@ -160,5 +169,48 @@
   }
   hideIfMissing('lnk-log','./tuning.log.jsonl');
   hideIfMissing('lnk-prop','./proposals.latest.json');
+})();
+</script>
+
+<!-- NEW: Topology tile script -->
+<script>
+(async()=>{
+  try{
+    const u = new URL('./receipt.latest.json', location.href);
+    u.searchParams.set('v', Date.now().toString()); // cache-bust mobile
+    const r = await fetch(u.toString(), {cache:'no-store'});
+    if(!r.ok) return;
+    const j = await r.json();
+
+    const rows = Array.isArray(j.geometry_attestation)? j.geometry_attestation : [];
+    let worst = 0; const caps={spectral_max:2.0,orthogonality_error:0.08,lipschitz_budget_used:0.80};
+    for(const row of rows){
+      for(const k in caps){
+        const v = +row[k]; if(!Number.isFinite(v)) continue;
+        worst = Math.max(worst, v / caps[k]);
+      }
+    }
+    const worstStr = (Number.isFinite(worst) && worst>0) ? (worst.toFixed(2)+'×') : 'n/a';
+    document.getElementById('geom-worst').textContent = worstStr;
+
+    const evo = j.training_evolution || {};
+    const shape = evo.loss_trajectory_shape || {};
+    document.getElementById('evo-inf').textContent = +(shape.inflections||0);
+    document.getElementById('evo-flips').textContent = +(evo.policy_flips_per_epoch||0);
+
+    const dt = j.defect_topology || {};
+    document.getElementById('def-class').textContent = (dt.class||'–');
+
+    const t = j.topo || {};
+    const fmt = x => (Number.isFinite(+x)? (+x).toFixed(3) : '–');
+    document.getElementById('H').textContent = fmt(t.H);
+    document.getElementById('K').textContent = fmt(t.kappa);
+    document.getElementById('X').textContent = fmt(t.chi);
+    document.getElementById('E').textContent = fmt(t.eps);
+    document.getElementById('D').textContent = fmt(t.D_topo);
+    document.getElementById('R').textContent = fmt(t.rigidity);
+
+    document.getElementById('inv-topo').hidden = false;
+  }catch{}
 })();
 </script>
