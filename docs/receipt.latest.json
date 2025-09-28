@@ -38,18 +38,9 @@
   },
   "next_try": {
     "patch": [
-      {
-        "key": "smooth",
-        "to": 0.4
-      },
-      {
-        "key": "coarse",
-        "to": 0.28
-      },
-      {
-        "key": "steps",
-        "to": 280
-      }
+      { "key": "smooth", "to": 0.4 },
+      { "key": "coarse", "to": 0.28 },
+      { "key": "steps", "to": 280 }
     ],
     "note": "If edges still oversharp, try pull\u21920.22."
   },
@@ -71,6 +62,16 @@
     "variance_spike": 0.0,
     "drift_speedup": 0.0
   },
+
+  "training_evolution": {
+    "loss_trajectory_shape": { "monotone": false, "inflections": 2, "largest_jump": 0.04 },
+    "policy_flips_per_epoch": 0
+  },
+
+  "geometry_attestation": [
+    { "layer": "update.conv", "spectral_max": 1.30, "orthogonality_error": 0.02, "lipschitz_budget_used": 0.41 }
+  ],
+
   "topo": {
     "kappa": 0.1,
     "chi": 0.1,
@@ -78,5 +79,7 @@
     "rigidity": 0.5,
     "D_topo": 0.0,
     "H": 0.975
-  }
+  },
+
+  "receipt_version": "olr/1.2"
 }
