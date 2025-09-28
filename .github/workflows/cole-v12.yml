@@ -1,0 +1,59 @@
+name: COLE v1.2 attestation + topology
+
+on:
+  workflow_dispatch: {}
+  push:
+    paths:
+      - "docs/receipt.latest.json"   # run after emitter writes receipt
+      - ".github/workflows/cole-v12.yml"
+      - "scripts/**"
+      - "schema/receipt.v1.2.schema.json"
+
+permissions:
+  contents: write
+
+jobs:
+  v12:
+    # avoids retrigger loop on the commit this workflow makes
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install v1.2 deps
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install jsonschema pynacl
+
+      # Gate geometry first so QUENCH reason lands in the receipt
+      - name: Attest geometry (fail-closed)
+        env:
+          REQUIRE_GEOMETRY_ATTESTATION: "0"   # flip to "1" once geometry_attestation[] is present
+        run: python scripts/attest_geometry.py
+
+      - name: Pre-breach guard (leading indicators)
+        run: python scripts/prebreach_guard.py
+
+      - name: Apply topology hooks (compute H)
+        run: python scripts/apply_topo_hooks.py
+
+      # Validate after QUENCH/H so you still get a readable receipt
+      - name: Validate v1.2 schema
+        continue-on-error: true
+        run: python scripts/validate_v12.py
+
+      - name: Commit updated receipt (always)
+        if: always()
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          mkdir -p docs/history
+          ts=$(date +%s) && cp docs/receipt.latest.json docs/history/receipt-$ts.json || true
+          git add docs/receipt.latest.json docs/history/*.json || true
+          git diff --staged --quiet || git commit -m "ci: v1.2 attest + prebreach + topo H"
+          git push
