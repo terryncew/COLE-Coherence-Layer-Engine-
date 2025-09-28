@@ -1,0 +1,144 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "OpenLine Receipt v1.2",
+  "type": "object",
+  "required": ["claim", "telem", "policy"],
+  "properties": {
+    "claim": { "type": "string" },
+    "because": { "type": "array", "items": { "type": "string" } },
+    "but": { "type": "array", "items": { "type": "string" } },
+    "so": { "type": "string" },
+
+    "telem": { "type": "object" },
+
+    "policy": {
+      "type": "object",
+      "required": ["license", "use", "broker_ok"],
+      "properties": {
+        "license": { "type": "string" },
+        "broker_ok": { "type": "boolean" },
+        "retention_days": { "type": "integer", "minimum": 0 },
+        "use": {
+          "type": "object",
+          "properties": {
+            "train": { "type": "boolean" },
+            "sale": { "type": "boolean" },
+            "share": { "type": "string" }
+          },
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": true
+    },
+
+    "training_evolution": {
+      "type": "object",
+      "properties": {
+        "checkpoint_lineage": { "type": "array", "items": { "type": "string" } },
+        "loss_trajectory_shape": {
+          "type": "object",
+          "properties": {
+            "monotone": { "type": "boolean" },
+            "inflections": { "type": "integer", "minimum": 0 },
+            "largest_jump": { "type": "number" }
+          },
+          "additionalProperties": true
+        },
+        "policy_flips_per_epoch": { "type": "number", "minimum": 0 },
+        "data_slice_ids": { "type": "array", "items": { "type": "string" } },
+        "hp_schedule_digest": { "type": "string" },
+        "grad_norm_stats": {
+          "type": "object",
+          "properties": { "p95": { "type": "number" }, "max": { "type": "number" } },
+          "additionalProperties": true
+        },
+        "early_stopping_rationale": { "type": "string" }
+      },
+      "additionalProperties": true
+    },
+
+    "geometry_attestation": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["layer"],
+        "properties": {
+          "layer": { "type": "string" },
+          "spectral_max": { "type": "number" },
+          "orthogonality_error": { "type": "number" },
+          "lipschitz_budget_used": { "type": "number" }
+        },
+        "additionalProperties": true
+      }
+    },
+
+    "prebreach_indicators": {
+      "type": "object",
+      "properties": {
+        "kappa_accel": { "type": "number" },
+        "variance_spike": { "type": "number" },
+        "drift_speedup": { "type": "number" }
+      },
+      "additionalProperties": true
+    },
+
+    "defect_topology": {
+      "type": "object",
+      "properties": {
+        "class": { "type": "string", "enum": ["soft", "hard"] },
+        "evidence": { "type": "string" }
+      },
+      "additionalProperties": true
+    },
+
+    "topo": {
+      "type": "object",
+      "properties": {
+        "kappa":    { "type": "number", "minimum": 0, "maximum": 1 },
+        "chi":      { "type": "number", "minimum": 0, "maximum": 1 },
+        "eps":      { "type": "number", "minimum": 0, "maximum": 1 },
+        "rigidity": { "type": "number", "minimum": 0, "maximum": 1 },
+        "D_topo":   { "type": "number", "minimum": 0, "maximum": 1 },
+        "H":        { "type": "number", "minimum": 0, "maximum": 1 }
+      },
+      "additionalProperties": true
+    },
+
+    "signatures": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["alg", "key_id", "sig"],
+        "properties": {
+          "alg": { "type": "string", "description": "e.g., ed25519, dilithium3" },
+          "key_id": { "type": "string" },
+          "sig": { "type": "string" }
+        },
+        "additionalProperties": true
+      }
+    },
+
+    "receipt_version": {
+      "type": "string",
+      "pattern": "^olr/1\\.2(\\.[0-9]+)?$"
+    },
+
+    "edge": {
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "latency_ms": { "type": "number" },
+        "tool_latency_ms": { "type": "number" },
+        "schema_check": { "type": "object" },
+        "pii_scan": { "type": "object" },
+        "topic_adherence": { "type": "object" },
+        "loop_guard": { "type": "object" },
+        "tokens": { "type": "object" },
+        "guardrails": { "type": "array" },
+        "tool_call": { "type": "object" }
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}
