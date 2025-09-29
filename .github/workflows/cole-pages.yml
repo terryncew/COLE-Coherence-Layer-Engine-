@@ -1008,5 +1008,6 @@ HTML
         uses: actions/upload-pages-artifact@v3
         with:
           path: docs
-      - name: Deploy to Pages
-        id: d
+          - name: Deploy to Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
