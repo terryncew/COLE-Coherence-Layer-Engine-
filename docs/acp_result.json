@@ -1,0 +1,9 @@
+{
+    "flow_id":"demo_flow_xxx",
+    "status":"initiated",
+    "psp":"demo",
+    "merchant_id":"acct_demo",
+    "token_ref":"tok_demo",
+    "subtotal":26.0,
+    "currency":"USD"
+  }
