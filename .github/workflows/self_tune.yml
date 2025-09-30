@@ -1,4 +1,5 @@
-name: Self-tune NCA → Receipt
+name: "Self-tune NCA → Receipt"
+
 on:
   workflow_dispatch:
   schedule:
@@ -12,6 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
@@ -24,24 +26,29 @@ jobs:
       - name: Self-tune and emit receipt
         run: python scripts/self_tune.py
 
-      # no 'if:' expression — do a bash check instead
+      # Optional signing: only runs if RECEIPT_PRIV secret is set
       - name: Maybe sign receipt (optional)
         env:
           RECEIPT_PRIV: ${{ secrets.RECEIPT_PRIV }}
+        shell: bash
         run: |
           if [ -n "$RECEIPT_PRIV" ]; then
-            python - <<'PY'
-import json, os, time, binascii
-from pathlib import Path
-from nacl.signing import SigningKey
-p = Path("docs/receipt.latest.json"); data = p.read_bytes()
-sk = SigningKey(binascii.unhexlify(os.environ["RECEIPT_PRIV"]))
-sig = sk.sign(data).signature.hex()
-pub = sk.verify_key.encode().hex()
-rec = json.loads(data.decode())
-rec["sig"] = {"alg":"ed25519","ts":int(time.time()),"pub":pub,"sig":sig}
-p.write_text(json.dumps(rec, indent=2), encoding="utf-8")
-print("[ok] signed")
+            # Indent-heredoc, then strip leading spaces before feeding to Python
+            cat <<'PY' | sed -E 's/^[[:space:]]+//' | python -
+              import json, os, time, binascii
+              from pathlib import Path
+              from nacl.signing import SigningKey
+
+              p = Path("docs/receipt.latest.json")
+              data = p.read_bytes()
+              sk = SigningKey(binascii.unhexlify(os.environ["RECEIPT_PRIV"]))
+              sig = sk.sign(data).signature.hex()
+              pub = sk.verify_key.encode().hex()
+
+              rec = json.loads(data.decode())
+              rec["sig"] = {"alg": "ed25519", "ts": int(time.time()), "pub": pub, "sig": sig}
+              p.write_text(json.dumps(rec, indent=2), encoding="utf-8")
+              print("[ok] signed")
 PY
           else
             echo "No RECEIPT_PRIV secret set; skipping signing."
