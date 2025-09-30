@@ -1,0 +1,90 @@
+name: COLE Pages (text+vision guard)
+
+on:
+  workflow_dispatch:
+    inputs:
+      prompt:
+        description: "Prompt (used if ANTHROPIC_API_KEY set or fallback)"
+        type: string
+        default: "Direct technical assessment of the attached visuals; cite sources."
+      image_urls:
+        description: "Comma-separated image URLs (optional)"
+        type: string
+        default: ""
+  push:
+    branches: [ "main" ]
+    paths:
+      - "scripts/claude_harness.py"
+      - "docs/index.html"
+      - ".github/workflows/guard-and-pages.yml"
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install anthropic (only if key present)
+        if: ${{ secrets.ANTHROPIC_API_KEY != '' }}
+        run: python -m pip install --upgrade pip && pip install anthropic
+
+      - name: Run harness (Claude if key; otherwise offline)
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          IMGS_INPUT="${{ inputs.image_urls }}"
+          PYIMGS=""
+          if [ -n "$IMGS_INPUT" ]; then
+            IFS=',' read -ra A <<< "$IMGS_INPUT"
+            for u in "${A[@]}"; do PYIMGS="$PYIMGS --image ${u}"; done
+          fi
+
+          if [ -n "$ANTHROPIC_API_KEY" ]; then
+            python scripts/claude_harness.py --model claude-3-5-sonnet-20240620 --prompt "${{ inputs.prompt || 'Direct technical assessment of the attached visuals; cite sources.' }}" $PYIMGS
+          else
+            python scripts/claude_harness.py --stdin <<'TXT'
+            The adapter ran in offline mode (no API key). Replace this text by running the workflow with ANTHROPIC_API_KEY and optional image URLs.
+            TXT
+          fi
+
+      - name: Ensure docs/ & copy receipt
+        run: |
+          mkdir -p docs
+          cp artifacts/guard_receipt.json docs/receipt.latest.json
+
+      - name: Commit docs back
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add docs/receipt.latest.json
+          git commit -m "chore: update receipt via harness [skip ci]" || echo "no changes"
+          git push
+
+      # --- Pages deploy ---
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with: { path: docs }
+      - name: Deploy to Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
