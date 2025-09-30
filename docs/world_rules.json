@@ -1,0 +1,32 @@
+{
+  "timewords": { "morning":[5,12], "afternoon":[12,17], "evening":[17,21], "night":[21,5] },
+  "entities": ["apples","casserole","foil","tinfoil","aluminum foil","door","keys","bag","car","window","coffee","mail","dough","bread","chicken","roast"],
+  "aliases": { "foil":["tinfoil","aluminum foil"], "chicken":["raw chicken"] },
+  "state_changes": [
+    { "entity_pattern":"apples|fruit", "change_pattern":"weather.*|age.*|rot.*|spoil.*",
+      "requires_any": ["heat","humid","humidity","sun","left out","exposed"], "min_hours":24,
+      "hint":"Describe conditions (heat/humidity) and ≥24h with a sensory cue (soft, faint sour smell)." },
+    { "entity_pattern":"apples|fruit", "to_pattern":"casserole|pie|dish",
+      "requires_any":["bake","cook","oven","mix","pan","foil","stir"], "min_minutes":30,
+      "hint":"Include prep, ≥30min cook, + a sensory cue (oven hum, foil crinkle)." }
+  ],
+  "scene_rules": {
+    "require_time_progress_for_state_change_minutes": 5,
+    "max_time_jump_without_marker_minutes": 60,
+    "accepted_time_markers": ["later","after","minutes","hours","sunset","dusk","nightfall","dawn","clock","meanwhile","shortly","while"],
+    "min_sensory_cues_per_scene": 1
+  },
+  "senses_check": ["sight","sound","touch","smell"],
+  "sensory_keywords": {
+    "sight":["light","shadow","color","glow","dim","bright","haze"],
+    "sound":["hiss","clatter","hum","whisper","ding","rustle","sizzle"],
+    "touch":["warm","cold","rough","soft","smooth","heavy","light","humid"],
+    "smell":["scent","aroma","smell","whiff","steam","fragrance","sour"]
+  },
+  "embodied_prompts": [
+    "Describe the lighting or colors.",
+    "What sounds are audible?",
+    "How does the air or an object feel?",
+    "Any smells or aromas present?"
+  ]
+}
