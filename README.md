@@ -1,225 +1,127 @@
-[![OpenLine-compatible](https://img.shields.io/static/v1?label=OpenLine&message=compatible%20v0.1&color=1f6feb)](https://github.com/terryncew/openline-core)
+# COLE (Coherence Layer Engine)
 
-# COLE — Coherence Layer Engine
+**Status: Experimental research infrastructure**
 
-_A calm, auditable layer that watches rhythm, voice, and continuity — and emits a single JSON receipt you can trust._
+COLE is a self-monitoring system for AI agents that uses metaphorical frameworks (neuroscience, differential geometry, signal processing) as design principles for detecting drift, loops, and constraint imbalances.
 
-**Outputs**
-- `docs/receipt.latest.json` (current state)
-- `docs/history/receipt-*.json` (snapshots)
-- Live status (GitHub Pages): https://terryncew.github.io/COLE-Coherence-Layer-Engine-/
+## What This Actually Does
 
-**Runs on**  
-GitHub Actions only (no servers). Lightweight Python + NumPy; optional Ed25519 signing.
+COLE runs a suite of guards that scan agent outputs and produce a "health score" (H) based on:
+
+- **Rhythm tracking**: Autocorrelation and spectral analysis of output token counts (proxy for consistency)
+- **POV monitoring**: Pronoun distribution tracking to detect voice drift
+- **Continuity checking**: Entity and temporal marker validation for narrative coherence  
+- **Constraint balance**: Keyword frequency analysis (excite vs. inhibit patterns in guardrails)
+- **Audience modeling**: Pattern matching to detect creator vs. user and adjust tone
+
+Each guard writes metrics into a shared receipt (`docs/receipt.latest.json`). Topology hooks combine these into weighted penalties that adjust κ (curvature), χ (sensitivity), ε (entropy), and R (rigidity), producing the health score H.
+
+## What This Doesn't Do
+
+- **Prove mathematical theorems** about agent behavior
+- **Measure semantic coherence directly** (uses proxies like token patterns)
+- **Guarantee reliability improvements** (needs empirical validation)
+- **Implement literal neuroscience** (E/I balance is keyword counting, not neural modeling)
+
+The value is in whether these metaphors help build more reliable agents, not in literal mathematical correspondence.
+
+## Metaphors as Design Tools
+
+COLE uses borrowed terminology from other fields:
+
+- **"Rhythm" (signal processing)**: Measures regularity in output patterns. High autocorrelation + low variety = rut. Low autocorrelation + high variety = chaos.
+- **"E/I Balance" (neuroscience)**: Counts "allow/permit" vs "block/deny" keywords to detect if constraints are too loose or tight.
+- **"Curvature/Rigidity" (differential geometry)**: Heuristic penalties representing system stress and stability.
+- **"Phase-locking" (neural oscillations)**: PLV computed on turn indices—useful as regularity indicator, not literal synchronization.
+
+These are **design intuitions**, not empirical claims. They may or may not correlate with actual reliability.
+
+## Quick Start
+
+The system self-bootstraps via GitHub Actions:
+
+1. Enable GitHub Pages: Settings → Pages → Source: main → /docs
+2. The workflow runs on every push, writes all guard scripts, runs them, commits state back to `docs/`, and deploys the dashboard
+
+View live status at: `https://terryncew.github.io/COLE-Coherence-Layer-Engine-/`
+
+## Files You Can Edit
+
+- `docs/identity.profile.json` - Agent persona, style preferences, novelty thresholds
+- `docs/world_rules.json` - Entity lists, state-change rules, sensory keywords for continuity
+- `docs/context.json` - Stress/trust levels that modulate novelty budget
+- `docs/turns.jsonl` - Conversation history (if you want rhythm metrics to work)
+
+## Architecture
+```
+
+.github/workflows/cole-pages.yml  # Self-bootstrapping workflow
+docs/
+├── receipt.latest.json           # Current state + all metrics
+├── history/                      # Timestamped snapshots
+├── memory/                       # Episodes, audience model, neuro state
+└── index.html                    # Live dashboard
+scripts/                          # (Written by workflow)
+├── rhythm_metrics.py
+├── pov_rhythm_guard.py
+├── continuity_guard.py
+├── neuro_braincheck.py
+├── audience_tracker.py
+└── apply_topo_hooks.py
+
+```
+## What Needs Validation
+
+- **Do high-H receipts correlate with better outputs?** (Unknown)
+- **Do rhythm ruts predict failure modes?** (Unknown)  
+- **Does audience tracking reduce misalignment?** (Unknown)
+- **Which metaphors are useful vs. noise?** (Unknown)
+
+This is exploratory work. The code runs. The metaphors are untested.
+
+## Design Philosophy
+
+COLE treats agent monitoring as a **constraint satisfaction problem with multiple timescales**:
+
+- **Micro (turn-level)**: POV consistency, novelty within bounds
+- **Meso (rhythm)**: Output regularity without ruts
+- **Macro (continuity)**: Entity/time coherence across episodes
+- **Meta (audience)**: Alignment with interlocutor expectations
+
+The topology health score attempts to unify these into a single stability metric, but the weights (0.40κ + 0.25χ + 0.20ε + 0.15D - 0.10R) are **heuristic, not derived**.
+
+## Extending COLE
+
+To add a new guard:
+
+1. Write `scripts/your_guard.py` that reads `docs/receipt.latest.json`
+2. Compute your metrics, add them to the receipt JSON
+3. Update `scripts/apply_topo_hooks.py` to read your metrics and adjust κ/χ/ε/R/D
+4. Add a workflow step: `python scripts/your_guard.py || true`
+5. Update `docs/index.html` to display your metrics
+
+Guards should be **single-purpose, composable, and fail-gracefully**.
+
+## Related Work
+
+- **OpenLine Protocol** (sibling repo): Graph-based agent communication with digest fingerprints
+- **Receipt-based verification**: Point/Because/But/So format for explainable reasoning
+- **Constraint surfing**: Self-tuning via shadow simulation and tuning receipts
+
+COLE is one layer in a broader exploration of **legible, self-correcting agent systems**.
+
+## License
+
+MIT. Do what you want. Credit appreciated but not required.
+
+## Contact
+
+Terrynce White  
+Substack: https://terrynce.substack.com  
+GitHub: https://github.com/terryncew
 
 ---
 
-## Why COLE (core idea)
-
-LLMs drift. COLE adds a thin measurement + guard layer around any agent run and writes everything to a **receipt**. That receipt makes behavior legible and keeps quality steady.
-
-- **Identity & POV** — keep the expected person/voice (e.g., second person), encourage fresh phrasing, flag loop risk.  
-- **Temporal rhythm** — spot ruts/chaos from turn-length dynamics (autocorr, spectral entropy, dominant period, PLV).  
-- **Continuity & reality** — require time beats and plausible state changes (e.g., _apples → casserole_ needs prep + oven + minutes).  
-- **Neuro-analogy** — small E/I lens (excite vs. inhibit wording, selectivity, tone from reward history).  
-- **Audience** — infer creator/collaborator posture; track correction rate.  
-- **Topology health** — fold signals into a single **H** with κ, χ, ε, rigidity, D_topo.
-
-> **This receipts-first guard layer is the breakthrough.** Everything else below is optional.
-
----
-
-## Optional add-on: “Three Lungs” blender
-
-If you want output shaping on top of the measurement layer, COLE can **blend three parallel tracks**:
-
-- **Id** — exploratory, high-variance reasoning (creative leaps)  
-- **Ego** — bounded, quick-response logic (stay on track)  
-- **Superego** — memory, norms, policy (truth + continuity)
-
-The controller blends them from live signals:
-- **Φ\*** (coherence per cost) · **κ** (stress/curvature) · **ε** (entropy leak)
-
-This gives you **steady under stress**, **graceful failure**, and a system that **feels consistent** without hard mode switches. Use it if helpful; the guard + receipt layer works on its own.
-
----
-
-## What’s here (out of the box)
-
-**Workflows**
-- **COLE Pages (guards + status)** — runs all guards, updates the receipt, deploys **Pages**.  
-- **Self-tune NCA → Receipt** — optional periodic self-tuning; signs the receipt if you set a secret.
-
-**Scripts**
-- `scripts/rhythm_metrics.py`  
-- `scripts/pov_rhythm_guard.py`  
-- `scripts/continuity_guard.py`  
-- `scripts/neuro_braincheck.py`  
-- `scripts/audience_tracker.py`  
-- `scripts/apply_topo_hooks.py`
-
-**Docs**
-- `docs/index.html` — small status page that reads `receipt.latest.json` and shows live metrics.
-
-> **Phone-only tip:** any commit to `main` re-runs Actions, refreshes the receipt, and redeploys Pages.
-
----
-
-## Quick start (GitHub-only)
-
-1. Open the repo on GitHub → edit any file (even a space in `README.md`) → **Commit to `main`**.  
-2. Wait for **Actions** to finish.  
-3. Visit **Pages**: https://terryncew.github.io/COLE-Coherence-Layer-Engine-/  
-4. Open **`docs/receipt.latest.json`** for the machine-readable view.
-
-If Pages isn’t enabled yet: **Settings → Pages → Source: GitHub Actions**.
-
----
-
-## Inputs (optional files the guards read if present)
-
-- `docs/turns.jsonl` — recent turns for rhythm/POV analysis  
-  (one JSON per line: `{"ts": <unix>, "role": "assistant|user", "text": "..."}`).
-- `docs/context.json` — `{ "stress": 0..1, "trust": 0..1 }` to shape the novelty budget.
-- `docs/world_rules.json` — entity aliases, timewords, state-change rules (auto-bootstrapped if missing).
-- `docs/identity.profile.json` — target person/voice + novelty window (auto-bootstrapped if missing).
-
-COLE creates sensible defaults on first run.
-
----
-
-## Signing (optional)
-
-Add an **Ed25519** private key as repo secret `RECEIPT_PRIV` (hex).  
-The self-tune workflow will sign `docs/receipt.latest.json`, adding:
-
-```json
-"sig": { "alg": "ed25519", "ts": 0, "pub": "hex...", "sig": "hex..." }
-
-Verify locally (optional):
-
-from nacl.signing import VerifyKey
-import json, pathlib
-
-p = pathlib.Path("docs/receipt.latest.json")
-rec = json.loads(p.read_text())
-sig = bytes.fromhex(rec["sig"]["sig"])
-pub = VerifyKey(bytes.fromhex(rec["sig"]["pub"]))
-pub.verify(p.read_bytes(), sig)  # raises if invalid
-print("ok")
-
-
-⸻
-
-Receipt schema (high-level)
-
-A COLE receipt is a compact JSON document. Core sections:
-
-{
-  "claim": "Starter receipt for COLE.",
-  "because": ["We want a self-checking, self-reporting agent receipt."],
-  "but": [],
-  "so": "Guards will enrich this receipt with identity, temporal rhythm, and continuity checks.",
-
-  "temporal": {
-    "natural_frequency": {
-      "length_mean": 0.0,
-      "length_std": 0.0,
-      "tempo_mean": null,
-      "tempo_std": null,
-      "n_samples": 0
-    },
-    "rhythm": {
-      "strength": 0.0,
-      "variety": 0.0,
-      "period_lag": 0,
-      "plv": 0.0,
-      "rut": false,
-      "chaos": false,
-      "in_pocket": false
-    },
-    "latest": { "length_tokens": 0, "deviation_z": null },
-    "novelty_budget": { "min": 0.15, "max": 0.50, "target": 0.33 },
-    "context": { "stress": 0.0, "trust": 0.5 }
-  },
-
-  "identity": {
-    "pov": { "expected_person": "second", "share": 0.0, "drift": 0.0 },
-    "novelty": { "new_phrasing_rate": 0.0, "loop_risk": 0.0 }
-  },
-
-  "narrative": {
-    "continuity": {
-      "entities_now": [],
-      "minutes_mentioned": 0,
-      "has_time_marker": false,
-      "senses_detected": [],
-      "issues": [],
-      "notes": []
-    }
-  },
-
-  "neuro_analogy": {
-    "excitation_load": 0,
-    "inhibition_load": 0,
-    "ei_ratio": 1.0,
-    "inhibitory_specificity": 1.0,
-    "rate_limit_hits": 0,
-    "neuromodulatory_tone": "unknown",
-    "identity_switch_events": 0,
-    "sustained_skew_windows": 0,
-    "notes": "near-balanced"
-  },
-
-  "interlocutor": {
-    "likely_role": "user",
-    "interaction_mode": "help-seeking",
-    "turns_seen": 0,
-    "correction_rate": 0.0,
-    "needs_adjustment": false
-  },
-
-  "topo": {
-    "kappa": 0.10,
-    "chi": 0.10,
-    "eps": 0.05,
-    "rigidity": 0.50,
-    "D_topo": 0.00,
-    "H": 0.80
-  },
-
-  "source_repo": "terryncew/COLE-Coherence-Layer-Engine-",
-
-  "sig": {
-    "alg": "ed25519",
-    "ts": 0,
-    "pub": "hex...",
-    "sig": "hex..."
-  }
-}
-
-Notes
-	•	topo.H is a stable health summary; κ/χ/ε/rigidity/D_topo show how it was reached.
-	•	issues + notes are human-readable; the rest is machine-friendly.
-	•	source_repo keeps provenance when receipts move between systems.
-
-⸻
-
-Use with OpenLine (optional)
-
-COLE observes and records. Keep your agent/protocol as is (e.g., OpenLine graphs).
-Emit or link one receipt per run at docs/receipt.latest.json (this repo’s workflows already do it).
-
-⸻
-
-Troubleshooting
-	•	Pages 404 → Settings → Pages → ensure Source: GitHub Actions. Re-run the workflow.
-	•	No receipt.latest.json → check the “COLE Pages (guards + status)” job in Actions.
-	•	Signing skipped → confirm RECEIPT_PRIV secret is set (hex, no 0x).
-
-⸻
-
-License
-
-MIT. Attribution appreciated but not required.
+**Note**: This is research infrastructure I'm using for AI-assisted creative work. It's working code with speculative theory. Use it, break it, tell me what you find.
+```
 
