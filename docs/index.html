@@ -20,7 +20,7 @@
   .err{padding:10px;border-radius:10px;background:#fff3f3;border:1px solid #ffd0d0}
 </style>
 
-<!-- Load OpenLine card only after we confirm JSON exists -->
+<!-- OpenLine card for the receipt -->
 <script type="module" src="https://cdn.jsdelivr.net/gh/terryncew/openline-core@main/receipts-kit/openline-card.js"></script>
 
 <h1>Engine</h1>
@@ -39,14 +39,13 @@
     </div>
 
     <div class="muted" style="margin:10px 0 6px">Latest receipt</div>
-    <!-- Replaced by card after JSON check -->
     <div id="cardBox" class="muted">Loading…</div>
 
-    <!-- Why / Fix (plain English, one line each) -->
+    <!-- Why / Fix -->
     <div class="hint small" id="whyBox" hidden><b>Why not green:</b> <span id="whyText"></span></div>
     <div class="hint small" id="fixBox" hidden><b>Try next:</b> <span id="fixText"></span></div>
 
-    <!-- Optional patch from receipt.next_try.patch -->
+    <!-- Optional patch -->
     <div class="hint small" id="patchBox" hidden>
       <b>Suggested patch</b> (auto-applied on next run): <code id="patchText"></code>
     </div>
@@ -68,7 +67,7 @@
   <div class="tile">
     <div class="muted" style="margin-bottom:8px">Run it again</div>
     <ol class="small" style="margin:0 0 10px 18px">
-      <li>GitHub → <b>Actions</b> → <i>Emit receipt (COLE telem)</i></li>
+      <li>GitHub → <b>Actions</b> → <i>COLE Pages (guards + status)</i></li>
       <li>Tap <b>Run workflow</b></li>
       <li>Refresh this page</li>
     </ol>
@@ -76,13 +75,37 @@
     <p class="small"><a id="lnk-log" href="./tuning.log.jsonl">Tuning log</a> · <a id="lnk-prop" href="./proposals.latest.json">Proposed patch</a></p>
   </div>
 
-  <!-- NEW: Invariants & Topology tile -->
+  <!-- Invariants & Topology -->
   <div class="tile" id="inv-topo" hidden>
     <div class="muted" style="margin-bottom:6px">Invariants & Topology</div>
     <div class="small" id="geom-line">geometry: <b id="geom-worst">n/a</b> cap usage</div>
     <div class="small">evolution: inflections <b id="evo-inf">0</b> · flips/epoch <b id="evo-flips">0</b></div>
     <div class="small">defect: <b id="def-class">–</b></div>
     <div class="small">H <b id="H">–</b> · κ <b id="K">–</b> · χ <b id="X">–</b> · ε <b id="E">–</b> · D <b id="D">–</b> · R <b id="R">–</b></div>
+  </div>
+
+  <!-- Neuro Balance -->
+  <div class="tile" id="neuro" hidden>
+    <div class="muted" style="margin-bottom:6px">Neuro Balance</div>
+    <div class="small">E/I <b id="ne-ei">–</b> · specificity <b id="ne-spec">–</b></div>
+    <div class="small">tone <b id="ne-tone">–</b> · switches <b id="ne-switch">–</b> · streak <b id="ne-skew">–</b></div>
+    <div class="small muted" id="ne-notes">—</div>
+  </div>
+
+  <!-- Frontier Watch -->
+  <div class="tile" id="frontier" hidden>
+    <div class="muted" style="margin-bottom:6px">Frontier Watch</div>
+    <div class="small" id="fw-summary">signals: <b id="fw-count">0</b></div>
+    <div class="small" id="fw-top">top signal: <b id="fw-name">—</b> (w=<span id="fw-w">—</span>)</div>
+    <div class="small">nudges → κ <b id="fw-dk">+0.000</b>, ε <b id="fw-de">+0.000</b>, R <b id="fw-dr">+0.000</b></div>
+  </div>
+
+  <!-- Decision → Checkout (optional) -->
+  <div class="tile" id="checkout" hidden>
+    <div class="muted" style="margin-bottom:6px">Decision → Checkout</div>
+    <div class="small">status <b id="co-status">—</b> · PSP <b id="co-psp">—</b></div>
+    <div class="small">amount <b id="co-amt">—</b> <span id="co-cur"></span></div>
+    <div class="small muted">flow_id <span id="co-flow">—</span></div>
   </div>
 </div>
 
@@ -98,34 +121,32 @@
   const color = s => (s==='green'?'ok':(s==='amber'?'warn':'bad'));
   const dotColor = s => ({green:'#0a0', amber:'#c80', red:'#c00'}[s]||'#bbb');
 
-  // cache-bust so Safari/iOS won’t hold a stale 404
+  // cache-bust
   const url = new URL('receipt.latest.json', location.href);
   url.searchParams.set('v', Date.now().toString());
 
   fetch(url,{cache:'no-store'})
     .then(r=>{ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
     .then(j=>{
-      // Insert the card once JSON exists
+      // Insert card
       const card=document.createElement('openline-card');
       card.setAttribute('mode','compact');
       card.setAttribute('src', url.pathname + url.search);
       cardBox.replaceChildren(card);
 
+      // Telemetry → status
       const t = j.telem || {};
       const gain   = Number(t.regen_gain || 0);
       const drift  = Number(t.delta_scale || 0);
       const thresh = Number(j.threshold ?? 0.15);
-
-      // ONE ground truth: derive status from telemetry (so card and pill always match)
       const s = (gain <= 0.02) ? 'red' : ((gain >= 0.20 && drift <= thresh) ? 'green' : 'amber');
 
-      // Status pill
       txt.textContent = s;
       dot.style.background = dotColor(s);
       pill.className = 'pill ' + color(s);
       pill.hidden = false;
 
-      // Why (single crisp reason)
+      // Why
       let why = Array.isArray(j.but) && j.but[0] ? j.but[0] : '';
       if (!why) {
         if (drift > thresh) why = `drift Δ_scale ${drift.toFixed(3)} > threshold ${thresh.toFixed(3)}`;
@@ -134,7 +155,7 @@
       }
       if (s!=='green' && why){ whyText.textContent = why; whyBox.hidden = false; }
 
-      // Fix (from receipt or generic)
+      // Fix
       let fix = (typeof j.so === 'string' && j.so.trim()) ? j.so.trim() : '';
       if (!fix) {
         if (drift > thresh) fix = 'increase smoothing/coarse or reduce pull; add steps if edges are oversharp';
@@ -155,62 +176,86 @@
       $('g-steps').textContent  = Number(t.steps || 0);
       $('g-n').textContent      = Number(t.n || 0);
       gl.hidden = false;
+
+      // Invariants & Topology
+      const rows = Array.isArray(j.geometry_attestation)? j.geometry_attestation : [];
+      let worst = 0; const caps={spectral_max:2.0,orthogonality_error:0.08,lipschitz_budget_used:0.80};
+      for(const row of rows){
+        for(const k in caps){
+          const v = +row[k]; if(!Number.isFinite(v)) continue;
+          worst = Math.max(worst, v / caps[k]);
+        }
+      }
+      $('geom-worst').textContent = (Number.isFinite(worst) && worst>0) ? (worst.toFixed(2)+'×') : 'n/a';
+      const evo = j.training_evolution || {};
+      const shape = evo.loss_trajectory_shape || {};
+      $('evo-inf').textContent = +(shape.inflections||0);
+      $('evo-flips').textContent = +(evo.policy_flips_per_epoch||0);
+      const dt = j.defect_topology || {};
+      $('def-class').textContent = (dt.class||'–');
+      const topo = j.topo || {};
+      const fmt = x => (Number.isFinite(+x)? (+x).toFixed(3) : '–');
+      $('H').textContent = fmt(topo.H);
+      $('K').textContent = fmt(topo.kappa);
+      $('X').textContent = fmt(topo.chi);
+      $('E').textContent = fmt(topo.eps);
+      $('D').textContent = fmt(topo.D_topo);
+      $('R').textContent = fmt(topo.rigidity);
+      $('inv-topo').hidden = false;
+
+      // Neuro
+      const ne = j.neuro_analogy || {};
+      if (Object.keys(ne).length){
+        const num3 = x => Number.isFinite(+x) ? (+x).toFixed(3) : '–';
+        $('ne-ei').textContent = num3(ne.ei_ratio);
+        $('ne-spec').textContent = num3(ne.inhibitory_specificity);
+        $('ne-tone').textContent = ne.neuromodulatory_tone || '—';
+        $('ne-switch').textContent = Number.isFinite(+ne.identity_switch_events) ? ne.identity_switch_events : '–';
+        $('ne-skew').textContent = Number.isFinite(+ne.sustained_skew_windows) ? ne.sustained_skew_windows : '–';
+        $('ne-notes').textContent = ne.notes || '—';
+        $('neuro').hidden = false;
+      }
+
+      // Frontier Watch
+      const fw = j.frontier_watch || {};
+      const nud = fw.nudges || {};
+      const apps = Array.isArray(fw.applied) ? fw.applied : [];
+      if (fw && ('signals_considered' in fw)){
+        $('fw-count').textContent = fw.signals_considered ?? apps.length ?? 0;
+        $('fw-name').textContent = apps[0]?.id || '—';
+        $('fw-w').textContent = (apps[0]?.weight!=null) ? Number(apps[0].weight).toFixed(2) : '—';
+        const signFmt = v => (v>=0?'+':'') + (Number.isFinite(+v)?(+v).toFixed(3):'0.000');
+        $('fw-dk').textContent = signFmt(nud.kappa ?? 0);
+        $('fw-de').textContent = signFmt(nud.eps ?? 0);
+        $('fw-dr').textContent = signFmt(nud.rigidity ?? 0);
+        $('frontier').hidden = false;
+      }
+
+      // Checkout (optional)
+      const co = (j.commerce && j.commerce.acp) ? j.commerce.acp : null;
+      if (co){
+        $('co-status').textContent = co.status || '—';
+        $('co-psp').textContent = co.psp || '—';
+        if (co.subtotal!=null){
+          $('co-amt').textContent = Number(co.subtotal).toFixed(2);
+          $('co-cur').textContent = (co.currency || '').toUpperCase();
+        }
+        $('co-flow').textContent = co.flow_id || '—';
+        $('checkout').hidden = false;
+      }
     })
     .catch(err=>{
       cardBox.innerHTML =
         `<div class="err"><b>No JSON found</b> at <code>${url.pathname}</code> (${err.message}).
-          Run <i>Actions → Emit receipt (COLE telem)</i> or check the file path.</div>`;
+          Run <i>Actions → COLE Pages (guards + status)</i> or check the file path.</div>`;
     });
 
   // Hide optional links if missing
   async function hideIfMissing(id, path){
-    try{ const r = await fetch(path,{method:'HEAD',cache:'no-store'}); if(!r.ok) $(id).style.display='none'; }
-    catch{ $(id).style.display='none'; }
+    try{ const r = await fetch(path,{method:'HEAD',cache:'no-store'}); if(!r.ok) document.getElementById(id).style.display='none'; }
+    catch{ document.getElementById(id).style.display='none'; }
   }
   hideIfMissing('lnk-log','./tuning.log.jsonl');
   hideIfMissing('lnk-prop','./proposals.latest.json');
-})();
-</script>
-
-<!-- NEW: Topology tile script -->
-<script>
-(async()=>{
-  try{
-    const u = new URL('./receipt.latest.json', location.href);
-    u.searchParams.set('v', Date.now().toString()); // cache-bust mobile
-    const r = await fetch(u.toString(), {cache:'no-store'});
-    if(!r.ok) return;
-    const j = await r.json();
-
-    const rows = Array.isArray(j.geometry_attestation)? j.geometry_attestation : [];
-    let worst = 0; const caps={spectral_max:2.0,orthogonality_error:0.08,lipschitz_budget_used:0.80};
-    for(const row of rows){
-      for(const k in caps){
-        const v = +row[k]; if(!Number.isFinite(v)) continue;
-        worst = Math.max(worst, v / caps[k]);
-      }
-    }
-    const worstStr = (Number.isFinite(worst) && worst>0) ? (worst.toFixed(2)+'×') : 'n/a';
-    document.getElementById('geom-worst').textContent = worstStr;
-
-    const evo = j.training_evolution || {};
-    const shape = evo.loss_trajectory_shape || {};
-    document.getElementById('evo-inf').textContent = +(shape.inflections||0);
-    document.getElementById('evo-flips').textContent = +(evo.policy_flips_per_epoch||0);
-
-    const dt = j.defect_topology || {};
-    document.getElementById('def-class').textContent = (dt.class||'–');
-
-    const t = j.topo || {};
-    const fmt = x => (Number.isFinite(+x)? (+x).toFixed(3) : '–');
-    document.getElementById('H').textContent = fmt(t.H);
-    document.getElementById('K').textContent = fmt(t.kappa);
-    document.getElementById('X').textContent = fmt(t.chi);
-    document.getElementById('E').textContent = fmt(t.eps);
-    document.getElementById('D').textContent = fmt(t.D_topo);
-    document.getElementById('R').textContent = fmt(t.rigidity);
-
-    document.getElementById('inv-topo').hidden = false;
-  }catch{}
 })();
 </script>
