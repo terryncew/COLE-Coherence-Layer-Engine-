@@ -123,5 +123,4 @@ GitHub: https://github.com/terryncew
 ---
 
 **Note**: This is research infrastructure I'm using for AI-assisted creative work. It's working code with speculative theory. Use it, break it, tell me what you find.
-```
 
