@@ -1,0 +1,18 @@
+[
+  {
+    "id": "bio_qubit_cells",
+    "domain": ["Quantum","Bio"],
+    "novelty": 5, "constraint": 5,
+    "kappa": 0.50, "epsilon": 0.60,
+    "legibility": 0.45, "delta_frame": 0.90,
+    "source": "UChicago / Nature: fluorescent biological qubit in living cells"
+  },
+  {
+    "id": "taS2_switching",
+    "domain": ["Quantum","Materials"],
+    "novelty": 4, "constraint": 4,
+    "kappa": 0.40, "epsilon": 0.35,
+    "legibility": 0.70, "delta_frame": 0.60,
+    "source": "1T-TaS2 toggling insulator/metal"
+  }
+]
