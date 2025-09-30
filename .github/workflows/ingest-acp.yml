@@ -1,8 +1,9 @@
-name: Ingest ACP → Update Receipt
+name: Ingest ACP and Update Receipt
 
 on:
   repository_dispatch:
     types: [acp_result]
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -15,37 +16,61 @@ jobs:
   ingest:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - name: Decode ACP artifact into docs/
+      - name: Decode payload to docs/acp_result.json
+        env:
+          B64: ${{ github.event.client_payload.acp_b64 }}
         run: |
           mkdir -p docs
-          echo "${{ github.event.client_payload.acp_b64 }}" | base64 -d > docs/acp_result.json
-          test -s docs/acp_result.json && jq . docs/acp_result.json
-
-      - name: Merge into receipt.latest.json (commerce.acp)
-        run: |
           python - <<'PY'
-          from pathlib import Path
-          import json, time
-          rec = Path("docs/receipt.latest.json")
-          acp = Path("docs/acp_result.json")
-          j = json.loads(rec.read_text("utf-8")) if rec.exists() else {}
-          r = json.loads(acp.read_text("utf-8")) if acp.exists() else {}
-          j.setdefault("commerce", {})["acp"] = {
-            "flow_id": r.get("flow_id"), "psp": r.get("psp"), "merchant_id": r.get("merchant_id"),
-            "token_ref": r.get("token_ref"), "sku": r.get("sku"), "qty": r.get("qty"),
-            "subtotal": r.get("subtotal"), "currency": r.get("currency"),
-            "status": r.get("status"), "updated_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
-          }
-          Path("docs/receipt.latest.json").write_text(json.dumps(j, indent=2), encoding="utf-8")
-          print("[ok] receipt updated with commerce.acp")
+          import base64, os, pathlib
+          b64 = os.environ.get("B64","")
+          data = base64.b64decode(b64.encode()) if b64 else b"{}"
+          p = pathlib.Path("docs/acp_result.json"); p.write_bytes(data)
+          print("wrote", p)
           PY
 
-      - name: Commit receipt + artifact
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      # Minimal inline hook so this works even if scripts/commerce_hook.py isn't there yet
+      - name: Enrich receipt with ACP block
         run: |
-          git config user.name  "gh-actions"
-          git config user.email "actions@users.noreply.github.com"
+          python - <<'PY'
+          import json, pathlib
+          rec = pathlib.Path("docs/receipt.latest.json")
+          acp = pathlib.Path("docs/acp_result.json")
+          rec.parent.mkdir(parents=True, exist_ok=True)
+          if not rec.exists():
+              rec.write_text(json.dumps({"claim":"Starter receipt"}, indent=2), encoding="utf-8")
+          j = json.loads(rec.read_text("utf-8"))
+          try:
+              k = json.loads(acp.read_text("utf-8"))
+          except Exception:
+              k = {}
+          j.setdefault("commerce", {})["acp"] = {
+              "flow_id": k.get("flow_id"),
+              "psp": k.get("psp"),
+              "merchant_id": k.get("merchant_id"),
+              "token_ref": k.get("token_ref"),
+              "sku": k.get("sku"),
+              "qty": k.get("qty"),
+              "subtotal": k.get("subtotal"),
+              "currency": k.get("currency"),
+              "status": k.get("status")
+          }
+          rec.write_text(json.dumps(j, indent=2), encoding="utf-8")
+          print("updated", rec)
+          PY
+
+      - name: Commit docs
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
           git add docs/receipt.latest.json docs/acp_result.json
-          git commit -m "chore(receipt): ingest ACP result" || echo "No changes"
+          git commit -m "chore: ingest ACP result into receipt" || echo "no changes"
           git push
