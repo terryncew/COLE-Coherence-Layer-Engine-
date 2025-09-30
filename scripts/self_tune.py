@@ -1,182 +1,106 @@
-from __future__ import annotations
-import json, time, os
 from pathlib import Path
-import numpy as np
+import json, time
 
-# ----------- core helpers (tiny, numpy-only) --------------------------------
-def clamp01(x): return np.clip(x, 0.0, 1.0)
+REC = Path("docs/receipt.latest.json")
+LOG = Path("docs/tuning.log.jsonl")
+PARAMS = Path("params.json")
 
-def blur3(a: np.ndarray) -> np.ndarray:
-    k = np.array([[1,1,1],[1,1,1],[1,1,1]], float) / 9.0
-    h, w = a.shape
-    out = np.zeros_like(a)
-    for dy in (-1,0,1):
-        for dx in (-1,0,1):
-            y0, y1 = max(0,dy), h+min(0,dy)
-            x0, x1 = max(0,dx), w+min(0,dx)
-            out[y0:y1, x0:x1] += a[y0-dy:y1-dy, x0-dx:x1-dx] * k[dy+1, dx+1]
-    return out
+def clamp(x): 
+    try: return max(0.0, min(1.0, float(x)))
+    except: return 0.0
 
-def pool2(a: np.ndarray) -> np.ndarray:
-    h, w = a.shape
-    return a.reshape(h//2, 2, w//2, 2).mean(axis=(1,3))
-
-def up2(a: np.ndarray) -> np.ndarray:
-    return np.repeat(np.repeat(a, 2, axis=0), 2, axis=1)
-
-def mse(a,b):
-    d = (a-b).astype(float)
-    return float((d*d).mean())
-
-# ----------- simulation ------------------------------------------------------
-def run_sim(params: dict, n=64, seed=42):
-    rng = np.random.default_rng(seed)
-    yy, xx = np.mgrid[0:n,0:n]; r = np.hypot(xx - n/2, yy - n/2)
-    target = ((r <= n*0.26) & (r >= n*0.18)).astype(float)
-
-    # damage
-    state = target.copy()
-    for _ in range(80):
-        y = rng.integers(0, n-5); x = rng.integers(0, n-5)
-        state[y:y+5, x:x+5] = 0.0
-    err0 = mse(state, target)
-
-    # heal
-    PULL=params["pull"]; SMOOTH=params["smooth"]; COARSE=params["coarse"]
-    STEPS=int(params["steps"]); NOISE=params["noise"]
-
-    for _ in range(STEPS):
-        s_blur = blur3(state)
-        state  = clamp01((1.0 - SMOOTH) * state + SMOOTH * s_blur)
-        state += PULL   * (target - state)
-        state += COARSE * (up2(pool2(target)) - up2(pool2(state)))
-        state  = clamp01(state + (rng.random(state.shape) - 0.5) * NOISE)
-
-    err1 = mse(state, target)
-    regen_gain = 0.0 if err0 == 0 else (1.0 - err1 / max(err0, 1e-12))
-    coarse_t = pool2(target);  coarse_s = pool2(state)
-    delta_scale = float(np.mean(np.abs(coarse_t - coarse_s)) /
-                        (np.mean(np.abs(coarse_t)) + 1e-12))
-
-    telem = {
-        "regen_error_before": round(err0, 6),
-        "regen_error_after":  round(err1, 6),
-        "regen_gain": round(regen_gain, 6),
-        "delta_scale": round(delta_scale, 6),
-        "steps": STEPS, "n": n,
-        "pull": PULL, "smooth": SMOOTH, "coarse": COARSE, "noise": NOISE,
-    }
-    return telem
-
-HEAL_MIN_GAIN = 0.60
-SCALE_TOL     = 0.06
-
-def diagnose(t):
-    reasons=[]
-    if t["regen_gain"] < HEAL_MIN_GAIN:
-        reasons.append(f"insufficient healing (gain {t['regen_gain']:.1%} < {HEAL_MIN_GAIN:.0%})")
-    if t["delta_scale"] > SCALE_TOL:
-        reasons.append(f"multiscale drift Δ_scale={t['delta_scale']:.3f} > {SCALE_TOL:.3f}")
-    status = "green" if not reasons else ("amber" if t["regen_gain"]>=0.5 else "red")
-    hint = ("OK — self-heals within tolerance"
-            if status=="green"
-            else "Try: +smooth, +coarse, +steps; or −pull")
-    return status, reasons, hint
-
-def receipt_from(telem, status, reasons, hint, trials):
-    because = [
-        f"Regeneration gain {telem['regen_gain']:.1%} after {telem['steps']} steps",
-        "Local smoothing + frozen blueprint + coarse pull drive healing",
-        f"knobs: pull={telem['pull']:.2f}, smooth={telem['smooth']:.2f}, "
-        f"coarse={telem['coarse']:.2f}, noise={telem['noise']:.3f}",
-        f"trials={trials}"
-    ]
-    but = (["—"] if status=="green" else [f"Fail: {r}" for r in reasons])
+def load_receipt():
+    if REC.exists():
+        try: return json.loads(REC.read_text("utf-8"))
+        except: pass
+    # bootstrap if missing
     return {
-        "claim": "NCA regenerator heals target after damage",
-        "because": because,
-        "but": but,
-        "so": hint,
-        "telem": telem,
-        "threshold": SCALE_TOL,
-        "model": "nca/self-tune-toy",
-        "attrs": {"status": status}
+        "claim": "Starter receipt for COLE.",
+        "because": ["Self-tuner created a default receipt."],
+        "but": [],
+        "so": "Guards and tuners will enrich this over time.",
+        "topo": {"kappa":0.10,"chi":0.10,"eps":0.05,"rigidity":0.50,"D_topo":0.00,"H":0.50}
     }
 
-# ----------- hill-climber ----------------------------------------------------
-BOUNDS = {
-    "pull":   (0.08, 0.60),
-    "smooth": (0.00, 0.80),
-    "coarse": (0.00, 0.80),
-    "steps":  (60,  720),
-    "noise":  (0.000, 0.02),
-}
-
-def clamp_params(p):
-    q=dict(p)
-    for k,(lo,hi) in BOUNDS.items():
-        q[k] = float(np.clip(q[k], lo, hi))
-        if k=="steps": q[k] = int(round(q[k]))
-    return q
-
-CANDIDATE_DELTAS = [
-    {"smooth": +0.04}, {"coarse": +0.06}, {"steps": +40},
-    {"pull":  -0.04}, {"noise": -0.002},
-    {"smooth": +0.08}, {"coarse": +0.10}, {"steps": +80}, {"pull": -0.08}
-]
-
-def propose_neighbors(p):
-    for d in CANDIDATE_DELTAS:
-        q = dict(p); 
-        for k,v in d.items(): q[k] = q[k] + v
-        yield clamp_params(q)
+def compute_H(kappa, chi, eps, rigidity, D):
+    return clamp(1.0 - (0.40*kappa + 0.25*chi + 0.20*eps + 0.15*D) + 0.10*rigidity)
 
 def main():
-    root = Path(".")
-    params_path = root/"params.json"
-    params = json.loads(params_path.read_text()) if params_path.exists() else {
-        "pull":0.26,"smooth":0.36,"coarse":0.22,"steps":240,"noise":0.006
+    j = load_receipt()
+    topo = j.get("topo") or {}
+    kappa    = float(topo.get("kappa", 0.10))
+    chi      = float(topo.get("chi",   0.10))
+    eps      = float(topo.get("eps",   0.05))
+    rigidity = float(topo.get("rigidity", 0.50))
+    D        = float(topo.get("D_topo", 0.00))
+    H_prev   = float(topo.get("H", 0.50))
+
+    # read lightweight signals from guards if present
+    cont = ((j.get("narrative") or {}).get("continuity") or {})
+    issues = len(cont.get("issues", []) or [])
+    senses = len(cont.get("senses_detected", []) or [])
+    pov_drift = float(((j.get("identity") or {}).get("pov") or {}).get("drift") or 0.0)
+    nov_rate  = float(((j.get("identity") or {}).get("novelty") or {}).get("new_phrasing_rate") or 1.0)
+
+    # simple, transparent rules
+    # 1) if H is low, soften κ (less curvature) and add a touch of rigidity
+    if H_prev < 0.60:
+        kappa = clamp(kappa - 0.02)
+        rigidity = clamp(rigidity + 0.01)
+    # 2) if continuity issues, raise χ and tiny κ
+    if issues > 0:
+        chi = clamp(chi + 0.05)
+        kappa = clamp(kappa + 0.02)
+    # 3) if senses present, tiny rigidity bonus
+    if senses >= 1:
+        rigidity = clamp(rigidity + 0.01)
+    # 4) if POV drift is high, increase χ (order pressure)
+    if pov_drift > 0.30:
+        chi = clamp(chi + 0.04)
+    # 5) if novelty too low, increase ε (exploration pressure)
+    if nov_rate < 0.20:
+        eps = clamp(eps + 0.03)
+
+    # recompute H
+    H_new = compute_H(kappa, chi, eps, rigidity, D)
+
+    # write back
+    j.setdefault("so", "")
+    if H_new > H_prev + 1e-6:
+        j["so"] = (j["so"].rstrip(".") + (" · " if j["so"] else "") + "Self-tune nudged topology towards stability.")
+    j["topo"] = {
+        "kappa": round(kappa,3),
+        "chi": round(chi,3),
+        "eps": round(eps,3),
+        "rigidity": round(rigidity,3),
+        "D_topo": round(D,3),
+        "H": round(H_new,3)
     }
-    params = clamp_params(params)
+    REC.parent.mkdir(parents=True, exist_ok=True)
+    REC.write_text(json.dumps(j, indent=2), encoding="utf-8")
 
-    history = []
-    best_params = dict(params)
-    best = run_sim(best_params)
-    status, reasons, hint = diagnose(best)
-    history.append({"params":best_params, "telem":best, "status":status})
+    # append log
+    LOG.parent.mkdir(parents=True, exist_ok=True)
+    LOG.write_text("", encoding="utf-8") if not LOG.exists() else None
+    with LOG.open("a", encoding="utf-8") as f:
+        f.write(json.dumps({
+            "ts": int(time.time()),
+            "H_prev": round(H_prev,3),
+            "H_new": round(H_new,3),
+            "issues": issues,
+            "senses": senses,
+            "pov_drift": round(pov_drift,3),
+            "nov_rate": round(nov_rate,3),
+            "kappa": kappa, "chi": chi, "eps": eps, "rigidity": rigidity, "D_topo": D
+        }) + "\n")
 
-    MAX_TRIALS = 10
-    trials = 1
+    # export small param snapshot (handy later)
+    PARAMS.write_text(json.dumps({
+        "last_tune_ts": int(time.time()),
+        "topo": j["topo"]
+    }, indent=2), encoding="utf-8")
 
-    while status!="green" and trials < MAX_TRIALS:
-        improved = False
-        best_score = (best["regen_gain"], -best["delta_scale"])
-        for cand in propose_neighbors(best_params):
-            t = run_sim(cand, seed=42)  # fixed seed for fair compare
-            score = (t["regen_gain"], -t["delta_scale"])
-            if score > best_score:
-                best_score = score
-                best_params = cand
-                best = t
-                improved = True
-        trials += 1
-        status, reasons, hint = diagnose(best)
-        history.append({"params":best_params, "telem":best, "status":status})
-        if not improved:  # stagnation: widen steps / allow more iterations
-            best_params["steps"] = int(min(BOUNDS["steps"][1], best_params["steps"] + 80))
-            best_params["smooth"] = float(min(BOUNDS["smooth"][1], best_params["smooth"] + 0.08))
-            best_params["coarse"] = float(min(BOUNDS["coarse"][1], best_params["coarse"] + 0.10))
+    print(f"[ok] self_tune: H {H_prev:.3f} → {H_new:.3f}  (issues={issues} senses={senses} drift={pov_drift:.2f} nov={nov_rate:.2f})")
 
-    # write artifacts
-    (root/"docs").mkdir(parents=True, exist_ok=True)
-    (root/"docs"/"tuning.log.jsonl").write_text(
-        "\n".join(json.dumps(h) for h in history), encoding="utf-8"
-    )
-    (root/"params.json").write_text(json.dumps(best_params, indent=2), encoding="utf-8")
-
-    receipt = receipt_from(best, status, reasons, hint, trials)
-    (root/"docs"/"receipt.latest.json").write_text(json.dumps(receipt, indent=2), encoding="utf-8")
-    print(f"[{status}] trials={trials} best={best_params} gain={best['regen_gain']:.3f} Δ={best['delta_scale']:.3f}")
-
-if __name__=="__main__":
+if __name__ == "__main__":
     main()
