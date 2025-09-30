@@ -1,0 +1,56 @@
+name: Frame to COLE (dispatch)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["main"]
+    paths:
+      - "adapters/frames/**"
+      - "examples/build_frame_from_text.py"
+      - ".github/workflows/frame-to-cole.yml"
+
+permissions:
+  contents: read
+
+env:
+  TARGET_REPO: "terryncew/COLE-Coherence-Layer-Engine-"
+
+jobs:
+  build-and-dispatch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Build frame.json (bounded, stdlib only)
+        run: |
+          python examples/build_frame_from_text.py || true
+          test -s artifacts/frame.json
+
+      - name: Encode artifact (base64 via Python)
+        id: prep
+        run: |
+          python - <<'PY'
+          import base64, sys, json
+          b64 = base64.b64encode(open("artifacts/frame.json","rb").read()).decode()
+          print(f"::add-mask::{b64}")
+          open(os.environ["GITHUB_OUTPUT"],"a").write(f"frame_b64={b64}\n")
+          PY
+
+      - name: Dispatch to COLE
+        env:
+          TOKEN:  ${{ secrets.COLE_DISPATCH_TOKEN }}
+          TARGET: ${{ env.TARGET_REPO }}
+          FRAME:  ${{ steps.prep.outputs.frame_b64 }}
+        run: |
+          if [ -z "$TOKEN" ]; then echo "Missing secret COLE_DISPATCH_TOKEN"; exit 1; fi
+          curl -sS -X POST \
+            -H "Authorization: token ${TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            https://api.github.com/repos/${TARGET}/dispatches \
+            -d "{\"event_type\":\"frame_result\",\"client_payload\":{\"frame_b64\":\"${FRAME}\"}}"
