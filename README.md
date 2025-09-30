@@ -1,3 +1,5 @@
+[![OpenLine-compatible](https://img.shields.io/static/v1?label=OpenLine&message=compatible%20v0.1&color=1f6feb)](https://github.com/terryncew/openline-core)
+
 # COLE — Coherence Layer Engine
 
 _A calm, auditable layer that watches rhythm, voice, and continuity — and emits a single JSON receipt you can trust._
@@ -12,33 +14,48 @@ GitHub Actions only (no servers). Lightweight Python + NumPy; optional Ed25519 s
 
 ---
 
-## Why COLE
+## Why COLE (core idea)
 
-LLMs drift. COLE adds a thin measurement + guard layer around any agent run and writes everything to a **receipt**:
+LLMs drift. COLE adds a thin measurement + guard layer around any agent run and writes everything to a **receipt**. That receipt makes behavior legible and keeps quality steady.
 
-- **Identity & POV** — keep the expected person/voice (e.g., second person), encourage fresh phrasing, flag loop risk.
-- **Temporal rhythm** — spot ruts/chaos from turn-length dynamics (autocorr, spectral entropy, dominant period, PLV).
-- **Continuity & reality** — require time beats and plausible state changes (e.g., _apples → casserole_ needs prep + oven + minutes).
-- **Neuro-analogy** — small E/I lens (excite vs. inhibit wording, selectivity, tone from reward history).
-- **Audience** — infer creator/collaborator posture; track correction rate.
+- **Identity & POV** — keep the expected person/voice (e.g., second person), encourage fresh phrasing, flag loop risk.  
+- **Temporal rhythm** — spot ruts/chaos from turn-length dynamics (autocorr, spectral entropy, dominant period, PLV).  
+- **Continuity & reality** — require time beats and plausible state changes (e.g., _apples → casserole_ needs prep + oven + minutes).  
+- **Neuro-analogy** — small E/I lens (excite vs. inhibit wording, selectivity, tone from reward history).  
+- **Audience** — infer creator/collaborator posture; track correction rate.  
 - **Topology health** — fold signals into a single **H** with κ, χ, ε, rigidity, D_topo.
 
-Goal: **make behavior legible** and keep quality steady.
+> **This receipts-first guard layer is the breakthrough.** Everything else below is optional.
+
+---
+
+## Optional add-on: “Three Lungs” blender
+
+If you want output shaping on top of the measurement layer, COLE can **blend three parallel tracks**:
+
+- **Id** — exploratory, high-variance reasoning (creative leaps)  
+- **Ego** — bounded, quick-response logic (stay on track)  
+- **Superego** — memory, norms, policy (truth + continuity)
+
+The controller blends them from live signals:
+- **Φ\*** (coherence per cost) · **κ** (stress/curvature) · **ε** (entropy leak)
+
+This gives you **steady under stress**, **graceful failure**, and a system that **feels consistent** without hard mode switches. Use it if helpful; the guard + receipt layer works on its own.
 
 ---
 
 ## What’s here (out of the box)
 
 **Workflows**
-- **COLE Pages (guards + status)** — runs all guards, updates the receipt, deploys **Pages**.
+- **COLE Pages (guards + status)** — runs all guards, updates the receipt, deploys **Pages**.  
 - **Self-tune NCA → Receipt** — optional periodic self-tuning; signs the receipt if you set a secret.
 
 **Scripts**
-- `scripts/rhythm_metrics.py`
-- `scripts/pov_rhythm_guard.py`
-- `scripts/continuity_guard.py`
-- `scripts/neuro_braincheck.py`
-- `scripts/audience_tracker.py`
+- `scripts/rhythm_metrics.py`  
+- `scripts/pov_rhythm_guard.py`  
+- `scripts/continuity_guard.py`  
+- `scripts/neuro_braincheck.py`  
+- `scripts/audience_tracker.py`  
 - `scripts/apply_topo_hooks.py`
 
 **Docs**
@@ -82,7 +99,7 @@ The self-tune workflow will sign `docs/receipt.latest.json`, adding:
 Verify locally (optional):
 
 from nacl.signing import VerifyKey
-import json, pathlib, binascii
+import json, pathlib
 
 p = pathlib.Path("docs/receipt.latest.json")
 rec = json.loads(p.read_text())
@@ -205,3 +222,4 @@ Troubleshooting
 License
 
 MIT. Attribution appreciated but not required.
+
