@@ -1,75 +1,205 @@
-[![OpenLine-compatible](https://img.shields.io/static/v1?label=OpenLine&message=compatible%20v0.1&color=1f6feb)](https://github.com/terryncew/openline-core)
-![Schema check](https://github.com/terryncew/openline-core/actions/workflows/validate.yml/badge.svg)
+# COLE — Coherence Layer Engine
 
-**Live hub:** https://terryncew.github.io/openline-hub/
+_A calm, auditable layer that watches rhythm, voice, and continuity — and emits a single JSON receipt you can trust._
 
-# COLE: Coherence Layer Engine
+**Outputs**
+- `docs/receipt.latest.json` (current state)
+- `docs/history/receipt-*.json` (snapshots)
+- Live status (GitHub Pages): https://terryncew.github.io/COLE-Coherence-Layer-Engine-/
 
-**“Three Lungs. One Body. Still Breathing.”**
-
-COLE is a lightweight, open-spec coherence layer for intelligent systems under load. It lets AI agents blend their outputs across three core functions—drive ID, Ego, and Superego based on real-time system health. You can wrap any AI model or agent framework with COLE to make it more stable, more trustworthy, and more human-aware.
-
----
-
-## ⚙️ What It Does
-
-- **Steady Under Stress** – Smoothly blends between creativity, pragmatism, and constraints depending on live conditions.
-- **Fails Gracefully** – Avoids cliff-edge collapse when traffic spikes, tools flake, or inputs go weird.
-- **Feels Alive** – Coherence becomes a first-class signal, not an afterthought.
+**Runs on**  
+GitHub Actions only (no servers). Lightweight Python + NumPy; optional Ed25519 signing.
 
 ---
 
-## 🧠 The Three Lungs
+## Why COLE
 
-COLE splits intelligence into three running subsystems:
+LLMs drift. COLE adds a thin measurement + guard layer around any agent run and writes everything to a **receipt**:
 
-- `Id` – Exploratory, high-variance reasoning (creative leaps).
-- `Ego` – Bounded, quick-response logic (stay on track).
-- `Superego` – Memory, norms, policy (truth + continuity).
+- **Identity & POV** — keep the expected person/voice (e.g., second person), encourage fresh phrasing, flag loop risk.
+- **Temporal rhythm** — spot ruts/chaos from turn-length dynamics (autocorr, spectral entropy, dominant period, PLV).
+- **Continuity & reality** — require time beats and plausible state changes (e.g., _apples → casserole_ needs prep + oven + minutes).
+- **Neuro-analogy** — small E/I lens (excite vs. inhibit wording, selectivity, tone from reward history).
+- **Audience** — infer creator/collaborator posture; track correction rate.
+- **Topology health** — fold signals into a single **H** with κ, χ, ε, rigidity, D_topo.
 
-These are *not* modes—they run in parallel. COLE’s controller blends them based on three live signals:
-- `Φ*` (coherence per cost)
-- `κ` (stress/curvature)
-- `ε` (entropy leak)
-
----
-
-## 🧪 How To Use
-
-1. **Drop it into your agent loop.** You don’t need to replace anything. Just run COLE’s blend logic on top.
-2. **Pass in your existing model’s outputs.** COLE blends them based on system health (signals like latency, contradiction, drift).
-3. **Return the final output.** That’s your stable, human-grade response—without hard switches.
+Goal: **make behavior legible** and keep quality steady.
 
 ---
 
-## 🪞Why This Matters
+## What’s here (out of the box)
 
-Without a coherence layer, systems fracture under pressure. You get hallucinations, tool failure, and brittle agents. COLE fixes that by making coherence dynamic and adaptive. It’s like an immune system for AI.
+**Workflows**
+- **COLE Pages (guards + status)** — runs all guards, updates the receipt, deploys **Pages**.
+- **Self-tune NCA → Receipt** — optional periodic self-tuning; signs the receipt if you set a secret.
 
----
+**Scripts**
+- `scripts/rhythm_metrics.py`
+- `scripts/pov_rhythm_guard.py`
+- `scripts/continuity_guard.py`
+- `scripts/neuro_braincheck.py`
+- `scripts/audience_tracker.py`
+- `scripts/apply_topo_hooks.py`
 
-## 🔐 Privacy & Portability
+**Docs**
+- `docs/index.html` — small status page that reads `receipt.latest.json` and shows live metrics.
 
-COLE is designed to work **on-device** or **at the edge**, with no cloud dependency. That means:
-- Private AI agents stay aligned without phoning home.
-- Local agents can coordinate with broader systems using a shared “heartbeat.”
-- Coherence becomes portable—your AI can stay *you* across devices and time.
-
----
-
-## 📖 Suggested Readings
-
-To understand the design behind COLE, check out:
-- [The Freudian AI](https://terrynce.substack.com/p/the-return-of-the-freudian-ai)
-- [Structured Sentience](https://terrynce.substack.com/p/structured-sentience)
-- [The Terrynce Curve](https://terrynce.substack.com/p/the-terrynce-curve)
+> **Phone-only tip:** any commit to `main` re-runs Actions, refreshes the receipt, and redeploys Pages.
 
 ---
 
-## 🪧 License & Attribution
+## Quick start (GitHub-only)
 
-COLE is **open source** under the MIT License. Attribution welcome, not required. If you use this in production or research, I’d love to hear about it.
+1. Open the repo on GitHub → edit any file (even a space in `README.md`) → **Commit to `main`**.  
+2. Wait for **Actions** to finish.  
+3. Visit **Pages**: https://terryncew.github.io/COLE-Coherence-Layer-Engine-/  
+4. Open **`docs/receipt.latest.json`** for the machine-readable view.
 
-> Designed by [Sir Terrynce](https://terrynce.substack.com). Released as a gift. Use it wisely.
+If Pages isn’t enabled yet: **Settings → Pages → Source: GitHub Actions**.
 
 ---
+
+## Inputs (optional files the guards will read if present)
+
+- `docs/turns.jsonl` — recent turns for rhythm/POV analysis  
+  (one JSON per line: `{"ts": <unix>, "role": "assistant|user", "text": "..."}`).
+- `docs/context.json` — `{ "stress": 0..1, "trust": 0..1 }` to shape the novelty budget.
+- `docs/world_rules.json` — entity aliases, timewords, state-change rules (auto-bootstrapped if missing).
+- `docs/identity.profile.json` — target person/voice + novelty window (auto-bootstrapped if missing).
+
+COLE will create sensible defaults on first run.
+
+---
+
+## Signing (optional)
+
+Add an **Ed25519** private key as a repo secret `RECEIPT_PRIV` (hex).  
+The self-tune workflow will sign `docs/receipt.latest.json`, adding:
+
+```json
+"sig": { "alg": "ed25519", "ts": 0, "pub": "hex...", "sig": "hex..." }
+
+## Verify locally (optional)
+
+from nacl.signing import VerifyKey
+import json, pathlib
+
+p = pathlib.Path("docs/receipt.latest.json")
+rec = json.loads(p.read_text())
+sig = bytes.fromhex(rec["sig"]["sig"])
+pub = VerifyKey(bytes.fromhex(rec["sig"]["pub"]))
+pub.verify(p.read_bytes(), sig)  # raises if invalid
+print("ok")
+
+## Receipt schema (high-level)
+
+A COLE receipt is a compact JSON document. Core sections:
+
+{
+  "claim": "Starter receipt for COLE.",
+  "because": ["We want a self-checking, self-reporting agent receipt."],
+  "but": [],
+  "so": "Guards will enrich this receipt with identity, temporal rhythm, and continuity checks.",
+
+  "temporal": {
+    "natural_frequency": {
+      "length_mean": 0.0,
+      "length_std": 0.0,
+      "tempo_mean": null,
+      "tempo_std": null,
+      "n_samples": 0
+    },
+    "rhythm": {
+      "strength": 0.0,
+      "variety": 0.0,
+      "period_lag": 0,
+      "plv": 0.0,
+      "rut": false,
+      "chaos": false,
+      "in_pocket": false
+    },
+    "latest": { "length_tokens": 0, "deviation_z": null },
+    "novelty_budget": { "min": 0.15, "max": 0.50, "target": 0.33 },
+    "context": { "stress": 0.0, "trust": 0.5 }
+  },
+
+  "identity": {
+    "pov": { "expected_person": "second", "share": 0.0, "drift": 0.0 },
+    "novelty": { "new_phrasing_rate": 0.0, "loop_risk": 0.0 }
+  },
+
+  "narrative": {
+    "continuity": {
+      "entities_now": [],
+      "minutes_mentioned": 0,
+      "has_time_marker": false,
+      "senses_detected": [],
+      "issues": [],
+      "notes": []
+    }
+  },
+
+  "neuro_analogy": {
+    "excitation_load": 0,
+    "inhibition_load": 0,
+    "ei_ratio": 1.0,
+    "inhibitory_specificity": 1.0,
+    "rate_limit_hits": 0,
+    "neuromodulatory_tone": "unknown",
+    "identity_switch_events": 0,
+    "sustained_skew_windows": 0,
+    "notes": "near-balanced"
+  },
+
+  "interlocutor": {
+    "likely_role": "user",
+    "interaction_mode": "help-seeking",
+    "turns_seen": 0,
+    "correction_rate": 0.0,
+    "needs_adjustment": false
+  },
+
+  "topo": {
+    "kappa": 0.10,
+    "chi": 0.10,
+    "eps": 0.05,
+    "rigidity": 0.50,
+    "D_topo": 0.00,
+    "H": 0.80
+  },
+
+  "source_repo": "terryncew/COLE-Coherence-Layer-Engine-",
+
+  "sig": {
+    "alg": "ed25519",
+    "ts": 0,
+    "pub": "hex...",
+    "sig": "hex..."
+  }
+}
+
+Notes
+	•	topo.H is a stable health summary; κ/χ/ε/rigidity/D_topo show how it was reached.
+	•	issues + notes are human-readable; the rest is machine-friendly.
+	•	source_repo keeps provenance when receipts move between systems.
+
+⸻
+
+Use with OpenLine (optional)
+
+COLE observes and records. Keep your agent/protocol as is (e.g., OpenLine graphs).
+Emit or link one receipt per run at docs/receipt.latest.json (this repo’s workflows already do it).
+
+⸻
+
+Troubleshooting
+	•	Pages 404 → Settings → Pages → ensure Source: GitHub Actions. Re-run the workflow.
+	•	No receipt.latest.json → check the “COLE Pages (guards + status)” job in Actions.
+	•	Signing skipped → confirm RECEIPT_PRIV secret is set (hex, no 0x).
+
+⸻
+
+License
+
+MIT. Attribution appreciated but not required.
+
