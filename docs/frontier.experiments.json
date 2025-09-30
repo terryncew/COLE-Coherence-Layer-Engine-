@@ -1,0 +1,10 @@
+[
+  {
+    "id": "BEQS",
+    "title": "Bio-Embedded Quantum Sensing",
+    "fuse_of": ["bio_qubit_cells"],
+    "hypothesis": "Embed dark-state quantum sensors in cell scaffolds for onboard anomaly sensing.",
+    "expected_effect": {"kappa": -0.02, "rigidity": 0.02, "epsilon": -0.01},
+    "status": "proposal"
+  }
+]
