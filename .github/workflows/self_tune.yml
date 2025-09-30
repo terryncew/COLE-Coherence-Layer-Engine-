@@ -1,6 +1,7 @@
 name: Self-tune NCA → Receipt
+
 on:
-  workflow_dispatch: {}
+  workflow_dispatch:
   schedule:
     - cron: "0 */12 * * *"   # optional: auto-run twice a day
 
@@ -10,11 +11,15 @@ permissions:
 jobs:
   tune:
     runs-on: ubuntu-latest
+    env:
+      # expose the secret to the job env (may be empty if not set)
+      RECEIPT_PRIV: ${{ secrets.RECEIPT_PRIV }}
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-python@v5
-        with: { python-version: '3.11' }
+        with:
+          python-version: '3.11'
 
       - name: Install deps
         run: |
@@ -24,25 +29,28 @@ jobs:
       - name: Self-tune and emit receipt
         run: python scripts/self_tune.py
 
-      # Optional: sign the receipt (add secret RECEIPT_PRIV)
+      # Optional: sign the receipt only if the secret exists
       - name: Sign receipt (optional)
-        if: ${{ secrets.RECEIPT_PRIV != '' }}
+        if: ${{ env.RECEIPT_PRIV != '' }}
+        env:
+          RECEIPT_PRIV: ${{ secrets.RECEIPT_PRIV }}
         run: |
           python - <<'PY'
           import json, os, time, binascii
           from pathlib import Path
           from nacl.signing import SigningKey
-          p = Path("docs/receipt.latest.json"); data = p.read_bytes()
+
+          p = Path("docs/receipt.latest.json")
+          data = p.read_bytes()
           sk = SigningKey(binascii.unhexlify(os.environ["RECEIPT_PRIV"]))
           sig = sk.sign(data).signature.hex()
           pub = sk.verify_key.encode().hex()
-          rec = json.loads(data.decode())
+
+          rec = json.loads(data.decode("utf-8"))
           rec["sig"] = {"alg":"ed25519","ts":int(time.time()),"pub":pub,"sig":sig}
           p.write_text(json.dumps(rec, indent=2), encoding="utf-8")
           print("[ok] signed")
           PY
-        env:
-          RECEIPT_PRIV: ${{ secrets.RECEIPT_PRIV }}
 
       - name: Commit artifacts
         uses: stefanzweifel/git-auto-commit-action@v5
