@@ -59,7 +59,7 @@ If Pages isn’t enabled yet: **Settings → Pages → Source: GitHub Actions**.
 
 ---
 
-## Inputs (optional files the guards will read if present)
+## Inputs (optional files the guards read if present)
 
 - `docs/turns.jsonl` — recent turns for rhythm/POV analysis  
   (one JSON per line: `{"ts": <unix>, "role": "assistant|user", "text": "..."}`).
@@ -67,22 +67,22 @@ If Pages isn’t enabled yet: **Settings → Pages → Source: GitHub Actions**.
 - `docs/world_rules.json` — entity aliases, timewords, state-change rules (auto-bootstrapped if missing).
 - `docs/identity.profile.json` — target person/voice + novelty window (auto-bootstrapped if missing).
 
-COLE will create sensible defaults on first run.
+COLE creates sensible defaults on first run.
 
 ---
 
 ## Signing (optional)
 
-Add an **Ed25519** private key as a repo secret `RECEIPT_PRIV` (hex).  
+Add an **Ed25519** private key as repo secret `RECEIPT_PRIV` (hex).  
 The self-tune workflow will sign `docs/receipt.latest.json`, adding:
 
 ```json
 "sig": { "alg": "ed25519", "ts": 0, "pub": "hex...", "sig": "hex..." }
 
-## Verify locally (optional)
+Verify locally (optional):
 
 from nacl.signing import VerifyKey
-import json, pathlib
+import json, pathlib, binascii
 
 p = pathlib.Path("docs/receipt.latest.json")
 rec = json.loads(p.read_text())
@@ -91,7 +91,10 @@ pub = VerifyKey(bytes.fromhex(rec["sig"]["pub"]))
 pub.verify(p.read_bytes(), sig)  # raises if invalid
 print("ok")
 
-## Receipt schema (high-level)
+
+⸻
+
+Receipt schema (high-level)
 
 A COLE receipt is a compact JSON document. Core sections:
 
@@ -202,4 +205,3 @@ Troubleshooting
 License
 
 MIT. Attribution appreciated but not required.
-
