@@ -1,0 +1,47 @@
+name: Ingest Frame → Update Receipt
+
+on:
+  repository_dispatch:
+    types: [frame_result]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: cole-frame-receipt
+  cancel-in-progress: false
+
+jobs:
+  ingest:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Decode frame.json into docs/
+        env:
+          B64: ${{ github.event.client_payload.frame_b64 }}
+        run: |
+          mkdir -p docs
+          python - <<'PY'
+          import base64, os, pathlib
+          data = base64.b64decode((os.environ.get("B64") or "").encode()) if os.environ.get("B64") else b"{}"
+          p = pathlib.Path("docs/frame.json"); p.write_bytes(data); print("wrote", p)
+          PY
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Ingest OpenLine frame → receipt
+        run: |
+          python scripts/ingest_frame.py
+
+      - name: Commit docs
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add docs/receipt.latest.json docs/frame.json
+          git commit -m "chore: ingest frame → receipt (v0.2 signals)" || echo "no changes"
+          git push
