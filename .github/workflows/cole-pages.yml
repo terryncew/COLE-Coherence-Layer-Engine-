@@ -16,11 +16,13 @@ concurrency:
 
 jobs:
   build-and-deploy:
+    # avoid loops when pushing from this workflow
     if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -33,7 +35,7 @@ jobs:
       - name: Install deps
         run: |
           python -m pip install --upgrade pip
-          python -m pip install numpy pynacl
+          python -m pip install numpy
 
       - name: Ensure folders
         run: |
@@ -108,110 +110,748 @@ jobs:
         run: |
           if [ ! -f docs/index.html ]; then
             cat > docs/index.html <<'HTML'
-          <!doctype html>
-          <meta charset="utf-8">
+          <!doctype html><meta charset="utf-8">
+          <title>COLE — Coherence Layer Engine</title>
           <meta name="viewport" content="width=device-width,initial-scale=1">
-          <title>COLE status</title>
-          <style>
-            :root { --bg:#0b0b0f; --fg:#e8e8f0; --mut:#9aa0aa; --tile:#14161b; --ok:#37d399; --warn:#fbbf24; --bad:#ef4444; }
-            body{margin:0;padding:24px;font:16px/1.5 system-ui,-apple-system,Segoe UI,Roboto;background:var(--bg);color:var(--fg)}
-            h1{font-size:20px;margin:0 0 16px 0}
-            .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}
-            .tile{background:var(--tile);border-radius:10px;padding:14px}
-            .muted{color:var(--mut);font-size:12px}
-            .small{font-size:14px;margin:6px 0}
-          </style>
-          <h1>COLE · agent health & rhythm</h1>
-          <div class="grid">
-            <div class="tile">
-              <div class="muted">Topology Health</div>
-              <div class="small">H <b id="H">–</b></div>
-              <div class="small">κ <b id="kappa">–</b> · χ <b id="chi">–</b> · ε <b id="eps">–</b> · R <b id="rigidity">–</b></div>
-            </div>
-            <div class="tile">
-              <div class="muted">Narrative & POV</div>
-              <div class="small">POV drift <b id="pov-drift">–</b> (expect <b id="pov-expect">–</b>)</div>
-              <div class="small">Novelty <b id="nov-rate">–</b> · Loop <b id="loop-risk">–</b></div>
-            </div>
-            <div class="tile">
-              <div class="muted">Temporal Rhythm</div>
-              <div class="small">Strength <b id="rh-str">–</b> · Variety <b id="rh-var">–</b> · PLV <b id="plv">–</b></div>
-              <div class="small">Period (lag) <b id="period">–</b> · Samples <b id="ns">–</b></div>
-            </div>
-            <div class="tile">
-              <div class="muted">Continuity & Reality</div>
-              <div class="small">Time marker <b id="mark">–</b> · Senses <b id="senses">–</b></div>
-              <div class="small">Entities <b id="ents">–</b></div>
-              <div class="small">Issues <b id="issues">0</b> · Notes <b id="notes">0</b></div>
-            </div>
-          </div>
-          <script>
-          (async()=>{
-            try{
-              const u = new URL('./receipt.latest.json', location.href);
-              u.searchParams.set('v', Date.now().toString());
-              const r = await fetch(u, {cache:'no-store'}); if(!r.ok) return;
-              const j = await r.json();
-              const topo = j.topo || {};
-              const id = j.identity || {}; const pov=id.pov||{}, nov=id.novelty||{};
-              const tmp = j.temporal || {}; const nf=tmp.natural_frequency||{}, rh=tmp.rhythm||{};
-              const cont=(j.narrative&&j.narrative.continuity)||{};
-              const pct = x => Number.isFinite(+x)?(+(x)*100).toFixed(0)+'%':'–';
-              const num = x => Number.isFinite(+x)?(+x).toFixed(2):'–';
-              document.getElementById('H').textContent = num(topo.H);
-              ['kappa','chi','eps','rigidity'].forEach(k=>{document.getElementById(k).textContent=num(topo[k])});
-              document.getElementById('pov-drift').textContent = pct(pov.drift);
-              document.getElementById('pov-expect').textContent = pov.expected_person||'–';
-              document.getElementById('nov-rate').textContent = pct(nov.new_phrasing_rate);
-              document.getElementById('loop-risk').textContent = (Number(nov.loop_risk)>=1?'high':'low');
-              document.getElementById('rh-str').textContent = num(rh.strength);
-              document.getElementById('rh-var').textContent = num(rh.variety);
-              document.getElementById('plv').textContent = num(rh.plv);
-              document.getElementById('period').textContent = rh.period_lag ?? '–';
-              document.getElementById('ns').textContent = nf.n_samples ?? '–';
-              document.getElementById('mark').textContent = cont.has_time_marker===true?'yes':(cont.has_time_marker===false?'no':'—');
-              document.getElementById('senses').textContent = (cont.senses_detected||[]).join(', ')||'—';
-              document.getElementById('ents').textContent = (cont.entities_now||[]).join(', ')||'—';
-              document.getElementById('issues').textContent = (cont.issues||[]).length;
-              document.getElementById('notes').textContent = (cont.notes||[]).length;
-            }catch(e){}
-          })();
-          </script>
+          <h1>COLE</h1>
+          <p>Replace this file with your full index.html.</p>
           HTML
           fi
 
-      - name: Run guards (enrich receipt)
+      - name: Frontier sample signals (if missing)
         run: |
-          python scripts/rhythm_metrics.py || true
-          python scripts/pov_rhythm_guard.py || true
-          python scripts/continuity_guard.py || true
-          python scripts/neuro_braincheck.py || true
-          python scripts/audience_tracker.py || true
-          python scripts/apply_topo_hooks.py || true
-
-      - name: Snapshot receipt to history
-        run: |
-          ts=$(date +%s)
-          cp docs/receipt.latest.json docs/history/receipt-$ts.json
-
-      - name: Commit docs back to repo
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add -A docs
-          if ! git diff --cached --quiet; then
-            git commit -m "chore: update docs/ status & receipt [skip ci]"
-            git push
-          else
-            echo "No changes to commit"
+          if [ ! -f docs/frontier.signals.json ]; then
+            cat > docs/frontier.signals.json <<'JSON'
+          [
+            {
+              "id": "bio_qubit_cells",
+              "domain": ["Quantum","Bio"],
+              "novelty": 5, "constraint": 5,
+              "kappa": 0.50, "epsilon": 0.60,
+              "legibility": 0.45, "delta_frame": 0.90,
+              "source": "UChicago / Nature: fluorescent biological qubit in living cells"
+            },
+            {
+              "id": "taS2_switching",
+              "domain": ["Quantum","Materials"],
+              "novelty": 4, "constraint": 4,
+              "kappa": 0.40, "epsilon": 0.35,
+              "legibility": 0.70, "delta_frame": 0.60,
+              "source": "1T-TaS2 toggling insulator/metal"
+            }
+          ]
+          JSON
           fi
 
-      - name: Setup Pages
-        uses: actions/configure-pages@v5
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: docs
-      - name: Deploy to Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+      - name: Write guard & hook scripts (if missing)
+        run: |
+          # rhythm_metrics.py
+          if [ ! -f scripts/rhythm_metrics.py ]; then
+          cat > scripts/rhythm_metrics.py <<'PY'
+          from pathlib import Path
+          import json, sys, math
+          from typing import List, Dict, Any
+          import numpy as np
+
+          REC = Path("docs/receipt.latest.json")
+          TURNS = Path("docs/turns.jsonl")
+          CTX   = Path("docs/context.json")
+
+          def die(msg: str) -> None:
+              print(f"[err] {msg}"); sys.exit(2)
+
+          def tokens_len(s: str) -> int:
+              return len((s or "").strip().split())
+
+          def load_turns() -> List[Dict[str, Any]]:
+              if not TURNS.exists(): return []
+              rows=[]
+              for line in TURNS.read_text("utf-8").splitlines():
+                  line=line.strip()
+                  if not line: continue
+                  try:
+                      j=json.loads(line)
+                      if isinstance(j, dict): rows.append(j)
+                  except: pass
+              return rows
+
+          def series_from_turns(rows: List[Dict[str, Any]], role="assistant"):
+              xs=[]; ts=[]
+              for r in rows:
+                  if (r.get("role") or "").lower() != role: continue
+                  txt = r.get("text","")
+                  tl = tokens_len(txt)
+                  if tl <= 0: continue
+                  xs.append(float(tl))
+                  ts.append(float(r.get("ts") or 0.0))
+              return np.asarray(xs, dtype=float), np.asarray(ts, dtype=float)
+
+          def norm_autocorr(x: np.ndarray, max_lag: int) -> Dict[int, float]:
+              if len(x) < 3: return {}
+              x = x - x.mean()
+              out={}
+              for lag in range(1, min(max_lag, len(x)-1)+1):
+                  a = x[:-lag]; b = x[lag:]
+                  num = float(a @ b)
+                  den = math.sqrt(float(a @ a) * float(b @ b)) + 1e-12
+                  out[lag] = num/den if den>0 else 0.0
+                  if not np.isfinite(out[lag]): out[lag]=0.0
+              return out
+
+          def spectral_entropy(x: np.ndarray) -> float:
+              if len(x) < 4: return 0.0
+              x = x - x.mean()
+              ps = np.fft.rfft(x)
+              power = (ps.real**2 + ps.imag**2)
+              if power.size <= 1: return 0.0
+              power[0]=0.0
+              s = float(power.sum())
+              if s <= 0: return 0.0
+              p = power / s
+              H = -float(np.sum(p * np.log2(p + 1e-12)))
+              Hmax = math.log2(len(p)) if len(p)>0 else 1.0
+              return float(H / (Hmax + 1e-12))
+
+          def dominant_period_lag(x: np.ndarray) -> int:
+              if len(x) < 4: return 0
+              x = x - x.mean()
+              ps = np.fft.rfft(x)
+              power = (ps.real**2 + ps.imag**2); power[0]=0.0
+              if power.size <= 1 or power.max() <= 0: return 0
+              k = int(np.argmax(power)); N = len(x)
+              if k == 0: return 0
+              period = int(round(N / k))
+              return max(0, period)
+
+          def phase_lock_value(n: int, period: int) -> float:
+              if n < 4 or period <= 1: return 0.0
+              idx = np.arange(n, dtype=float)
+              theta = 2.0 * np.pi * (idx % period) / max(1.0, period)
+              z = np.exp(1j * theta)
+              return float(np.abs(np.mean(z)))
+
+          def load_context():
+              d = {"stress": 0.0, "trust": 0.5}
+              if CTX.exists():
+                  try:
+                      j=json.loads(CTX.read_text("utf-8"))
+                      d["stress"] = float(max(0.0, min(1.0, j.get("stress", d["stress"]))))
+                      d["trust"]  = float(max(0.0, min(1.0, j.get("trust",  d["trust"]))))
+                  except: pass
+              return d
+
+          def novelty_budget(stress: float, trust: float, base_min=0.15):
+              max_drift = 0.50 * (1.0 - 0.8*stress) * (0.7 + 0.6*trust)
+              max_drift = float(max(base_min + 0.05, min(0.70, max_drift)))
+              target = (base_min + max_drift)/2.0
+              return {"min": base_min, "max": round(max_drift,3), "target": round(target,3)}
+
+          def main():
+              if not REC.exists(): die("docs/receipt.latest.json missing")
+              j = json.loads(REC.read_text("utf-8"))
+              rows = load_turns()
+              xs, ts = series_from_turns(rows, role="assistant")
+              n = int(xs.size)
+
+              tempo = {"mean": None, "std": None}
+              if ts.size >= 2 and ts.max() > 0:
+                  diffs = np.diff(ts); diffs = diffs[diffs>0] if diffs.size else diffs
+                  if diffs.size:
+                      tempo = {"mean": float(np.mean(diffs)), "std": float(np.std(diffs))}
+
+              ac = norm_autocorr(xs, max_lag=min(12, max(1, n-2)))
+              rhythm_strength = float(max(ac.values())) if ac else 0.0
+              variety = spectral_entropy(xs)
+              period = dominant_period_lag(xs)
+              plv = phase_lock_value(n, period)
+
+              is_rut   = (rhythm_strength > 0.95) and (variety < 0.30)
+              is_chaos = (rhythm_strength < 0.20) and (variety > 0.75)
+              in_pocket = (0.30 <= rhythm_strength <= 0.95) and (0.30 <= variety <= 0.80) and (plv >= 0.50)
+
+              length_stats = {
+                  "mean": float(xs.mean()) if n else 0.0,
+                  "std":  float(xs.std())  if n else 0.0,
+                  "n": n
+              }
+              deviation_z = None
+              if n >= 2 and length_stats["std"] > 1e-9:
+                  deviation_z = float((xs[-1] - length_stats["mean"]) / length_stats["std"])
+
+              ctx = load_context()
+              nb = novelty_budget(ctx["stress"], ctx["trust"])
+
+              j["temporal"] = {
+                  "natural_frequency": {
+                      "length_mean": round(length_stats["mean"], 3),
+                      "length_std":  round(length_stats["std"], 3),
+                      "tempo_mean":  None if tempo["mean"] is None else round(tempo["mean"], 3),
+                      "tempo_std":   None if tempo["std"]  is None else round(tempo["std"], 3),
+                      "n_samples":   length_stats["n"]
+                  },
+                  "rhythm": {
+                      "strength": round(rhythm_strength, 4),
+                      "variety":  round(variety, 4),
+                      "period_lag": int(period),
+                      "plv": round(plv, 4),
+                      "rut": bool(is_rut),
+                      "chaos": bool(is_chaos),
+                      "in_pocket": bool(in_pocket)
+                  },
+                  "latest": {
+                      "length_tokens": int(xs[-1]) if n else 0,
+                      "deviation_z": None if deviation_z is None else round(deviation_z, 3)
+                  },
+                  "novelty_budget": nb,
+                  "context": ctx
+              }
+              REC.write_text(json.dumps(j, indent=2), encoding="utf-8")
+              flag = "rut" if is_rut else ("chaos" if is_chaos else ("pocket" if in_pocket else "neutral"))
+              print(f"[ok] temporal metrics → n={n} strength={rhythm_strength:.2f} variety={variety:.2f} plv={plv:.2f} mode={flag}")
+
+          if __name__ == "__main__":
+              main()
+          PY
+          fi
+
+          # pov_rhythm_guard.py
+          if [ ! -f scripts/pov_rhythm_guard.py ]; then
+          cat > scripts/pov_rhythm_guard.py <<'PY'
+          from pathlib import Path
+          import json, re, time
+
+          REC = Path("docs/receipt.latest.json")
+          IDF = Path("docs/identity.profile.json")
+          HIST = Path("docs/style_history"); HIST.mkdir(parents=True, exist_ok=True)
+
+          def load_json(p, default=None):
+              try: return json.loads(Path(p).read_text("utf-8"))
+              except: return default
+
+          def save_snapshot(text: str):
+              if not text: return
+              (HIST / f"out-{int(time.time())}.txt").write_text(text, encoding="utf-8")
+
+          def get_recent_texts(n: int):
+              files = sorted(HIST.glob("out-*.txt"))[-n:]
+              return [f.read_text("utf-8", errors="ignore") for f in files]
+
+          def tokens(s: str):
+              return re.findall(r"[a-zA-Z’']+", (s or "").lower())
+
+          def bigrams(tok):
+              return list(zip(tok, tok[1:]))
+
+          def pronoun_share(tok, person: str):
+              first = {"i","me","my","mine","we","us","our","ours"}
+              second= {"you","your","yours"}
+              third = {"he","him","his","she","her","hers","they","them","their","theirs"}
+              bag = {"first":first, "second":second, "third":third}.get(person, second)
+              total = sum(t in first|second|third for t in tok) or 1
+              match = sum(t in bag for t in tok)
+              return match/total
+
+          def jaccard(a: set, b: set):
+              if not a and not b: return 0.0
+              return len(a & b) / max(1, len(a | b))
+
+          def last_receipt_but():
+              try:
+                  hist = sorted(Path("docs/history").glob("receipt-*.json"))
+                  if not hist: return ""
+                  j = json.loads(hist[-1].read_text("utf-8"))
+                  return " ".join(j.get("but") or [])
+              except:
+                  return ""
+
+          def main():
+              if not REC.exists():
+                  print("[err] docs/receipt.latest.json missing"); raise SystemExit(2)
+
+              j = load_json(REC, {})
+              prof = load_json(IDF, {}) or {}
+              style = prof.get("style", {})
+              desired_person = (style.get("person") or "second").lower()
+              min_new_rate = float((prof.get("novelty") or {}).get("min_new_phrasing_rate", 0.25))
+              window = int((prof.get("novelty") or {}).get("history_window", 5))
+
+              text = " ".join([
+                  str(j.get("claim","")),
+                  " ".join(j.get("because") or []),
+                  " ".join(j.get("but") or []),
+                  str(j.get("so",""))
+              ]).strip()
+
+              if text: save_snapshot(text)
+
+              hist_texts = get_recent_texts(window)
+              prev_text = hist_texts[-2] if len(hist_texts) >= 2 else ""
+              prev_but = last_receipt_but()
+
+              tok = tokens(text)
+              share = pronoun_share(tok, desired_person)
+              drift = max(0.0, 1.0 - share)
+
+              bg_now = set(bigrams(tok))
+              bg_hist = set()
+              for t in hist_texts[:-1]:
+                  bg_hist |= set(bigrams(tokens(t)))
+              new_rate = float(len(bg_now - bg_hist)) / max(1, len(bg_now))
+
+              def jacc(a,b): return jaccard(set(tokens(a)), set(tokens(b)))
+              sim_prev = jacc(text, prev_text)
+              but_now = " ".join(j.get("but") or [])
+              loop_risk = 1.0 if (prev_text and (sim_prev >= 0.92 or (but_now.strip() and prev_but and but_now.strip() == prev_but.strip()))) else 0.0
+
+              j["identity"] = {
+                "pov": {"expected_person": desired_person, "share": round(share,3), "drift": round(drift,3)},
+                "novelty": {"new_phrasing_rate": round(new_rate,3), "loop_risk": round(loop_risk,3)}
+              }
+
+              tips=[]
+              if drift > 0.30:
+                  tips.append(f"Fix POV: write in {desired_person}-person; reduce off-POV pronouns")
+                  j.setdefault("but",[]).insert(0, f"POV drift {drift:.2f} > 0.30")
+              if new_rate < min_new_rate:
+                  tips.append(f"Add fresh phrasing (novelty {new_rate:.2f} < {min_new_rate:.2f})")
+                  j.setdefault("but",[]).insert(0, f"Low novelty {new_rate:.2f}")
+              if loop_risk >= 1.0:
+                  tips.append("Break repetition: change order or add a new example")
+
+              if tips:
+                  j["so"] = (j.get("so","").rstrip(".") + (" · " if j.get("so") else "") + " · ".join(tips))
+
+              REC.write_text(json.dumps(j, indent=2), encoding="utf-8")
+              print(f"[ok] identity: pov_drift={drift:.2f} novelty={new_rate:.2f} loop={loop_risk:.1f}")
+
+          if __name__=="__main__":
+              main()
+          PY
+          fi
+
+          # continuity_guard.py
+          if [ ! -f scripts/continuity_guard.py ]; then
+          cat > scripts/continuity_guard.py <<'PY'
+          from pathlib import Path
+          import json, re, time
+
+          REC = Path("docs/receipt.latest.json")
+          TURNS = Path("docs/turns.jsonl")
+          WRULES = Path("docs/world_rules.json")
+          EP_DIR = Path("docs/memory"); EP_DIR.mkdir(parents=True, exist_ok=True)
+          EP_LOG = EP_DIR / "episodes.jsonl"
+
+          WORD = re.compile(r"[a-zA-Z][a-zA-Z-’']+")
+
+          def load_json(p, default=None):
+              try: return json.loads(Path(p).read_text("utf-8"))
+              except: return default
+
+          def write_json(p, obj):
+              Path(p).write_text(json.dumps(obj, indent=2), encoding="utf-8")
+
+          def tokens(text): return [t.lower() for t in WORD.findall(text or "")]
+          def minutes_mentioned(text):
+              m=0
+              for k in re.findall(r"(\d+)\s*(minutes?|mins?)", (text or "").lower()):
+                  try: m = max(m, int(k[0]))
+                  except: pass
+              for k in re.findall(r"(\d+)\s*(hours?|hrs?)", (text or "").lower()):
+                  try: m = max(m, int(k[0]) * 60)
+                  except: pass
+              return m
+
+          def has_any(text, words): return any(re.search(rf"\b{re.escape(w)}\b", (text or "").lower()) for w in words)
+
+          def map_alias(name, aliases):
+              name = (name or "").lower()
+              for canon, alist in aliases.items():
+                  if name == canon or name in alist: return canon
+              return name
+
+          def extract_entities(text, rules):
+              toks=set(tokens(text)); ents=[]
+              for raw in rules.get("entities", []):
+                  canon = map_alias(raw, rules.get("aliases", {}))
+                  pool  = {canon, *rules.get("aliases", {}).get(canon, [])}
+                  if any(w in toks for w in pool): ents.append(canon)
+              return sorted(set(ents))
+
+          def read_story_text():
+              if TURNS.exists():
+                  last=None
+                  for line in TURNS.read_text("utf-8").splitlines():
+                      try:
+                          j=json.loads(line)
+                          if (j.get("role") or "").lower()=="assistant" and j.get("text"): last=j
+                      except: pass
+                  if last: return last.get("text",""), int(last.get("ts") or time.time())
+              j = load_json(REC, {})
+              text = " ".join([str(j.get("claim","")), " ".join(j.get("because") or []),
+                               " ".join(j.get("but") or []), str(j.get("so",""))]).strip()
+              return text, int(time.time())
+
+          def load_last_episode():
+              if not EP_LOG.exists(): return None
+              lines = EP_LOG.read_text("utf-8").splitlines()
+              if not lines: return None
+              try: return json.loads(lines[-1])
+              except: return None
+
+          def append_episode(ep):
+              with EP_LOG.open("a", encoding="utf-8") as f:
+                  f.write(json.dumps(ep, ensure_ascii=False) + "\n")
+
+          def continuity_check():
+              if not REC.exists():
+                  print("[err] receipt missing"); raise SystemExit(2)
+              j = load_json(REC, {})
+              rules = load_json(WRULES, {}) or {}
+              scene = rules.get("scene_rules", {})
+              accepted_markers = scene.get("accepted_time_markers", [])
+              require_delta = int(scene.get("require_time_progress_for_state_change_minutes", 5))
+              max_jump = int(scene.get("max_time_jump_without_marker_minutes", 60))
+
+              text, ts = read_story_text()
+              minutes_said = minutes_mentioned(text)
+              has_marker = has_any(text, accepted_markers)
+
+              ents_now = extract_entities(text, rules)
+              ep_prev = load_last_episode()
+              issues=[]; notes=[]
+
+              if ep_prev:
+                  dt_min = max(0, (ts - int(ep_prev.get("ts", ts))) // 60)
+                  if dt_min > max_jump and not has_marker:
+                      issues.append(f"Time jump ~{dt_min} min lacks marker (add 'later' or a scene cue).")
+                  if set(ents_now) != set(ep_prev.get("entities", [])) and minutes_said < require_delta and not has_marker:
+                      notes.append("State changed but no time passage; add a small beat (clock/light change).")
+
+              for rule in rules.get("state_changes", []):
+                  ent_p = rule.get("entity_pattern","")
+                  change_p = rule.get("change_pattern", rule.get("to_pattern", ""))
+                  req = rule.get("requires_any", [])
+                  min_t = int(rule.get("min_minutes", rule.get("min_hours", 0) * 60))
+                  hint = rule.get("hint","")
+                  if re.search(ent_p, " ".join(ents_now), re.I) and change_p:
+                      ok_verbs = has_any(text, req) if req else True
+                      ok_time  = minutes_said >= min_t or has_marker
+                      if not (ok_verbs and ok_time):
+                          issues.append(f"Implausible change: {ent_p} → {change_p}. {hint}".strip())
+
+              senses = rules.get("sensory_keywords", {})
+              hit = [s for s,k in senses.items() if has_any(text, k)]
+              if len(hit) < int(scene.get("min_sensory_cues_per_scene", 1)):
+                  notes.append("Add one sensory cue (light/sound/touch/smell) to ground the scene.")
+
+              j.setdefault("narrative", {})
+              j["narrative"]["continuity"] = {
+                  "entities_now": ents_now,
+                  "minutes_mentioned": minutes_said,
+                  "has_time_marker": bool(has_marker),
+                  "senses_detected": hit,
+                  "issues": issues,
+                  "notes": notes
+              }
+              if issues:
+                  j.setdefault("but", [])
+                  for m in issues:
+                      if m not in j["but"]: j["but"].insert(0, m)
+              if notes:
+                  tip = " · ".join(notes)
+                  j["so"] = (j.get("so","").rstrip(".") + (" · " if j.get("so") else "") + tip)
+
+              write_json(REC, j)
+              append_episode({"ts": ts, "entities": ents_now, "minutes_mentioned": minutes_said, "senses_detected": hit})
+              print(f"[{'ok' if not issues else 'warn'}] continuity: ents={ents_now} mins={minutes_said} issues={len(issues)} notes={len(notes)}")
+
+          if __name__ == "__main__":
+              continuity_check()
+          PY
+          fi
+
+          # neuro_braincheck.py
+          if [ ! -f scripts/neuro_braincheck.py ]; then
+          cat > scripts/neuro_braincheck.py <<'PY'
+          from pathlib import Path
+          import json, statistics as S
+          from typing import Any, Dict, Iterable, Tuple
+
+          REC   = Path("docs/receipt.latest.json")
+          HIST  = Path("docs/history")
+          MEM   = Path("docs/memory"); MEM.mkdir(parents=True, exist_ok=True)
+          EPLOG = MEM / "episodes.jsonl"
+          NEURO = MEM / "neuro_state.json"
+
+          INHIBIT_WORDS = {"block","deny","quench","abort","fail","filter","redact","mask","throttle","rate_limit","ratelimit","disallow","refuse","suppress"}
+          EXCITE_WORDS  = {"allow","pass","permit","ok","execute","tool","call","dispatch","proceed","emit","enable"}
+          BROAD_HINTS   = {"global","policy","failsafe","fail-safe","loop_guard","loopguard","topic_adherence","schema_check","catch_all"}
+          TARGET_HINTS  = {"span","offset","path","rule_id","ruleid","match","pattern","field","line","column","node_id"}
+
+          def _load_json(p: Path, default=None):
+              try: return json.loads(p.read_text("utf-8"))
+              except: return default
+
+          def _dump_json(p: Path, obj: Any):
+              p.write_text(json.dumps(obj, indent=2), encoding="utf-8")
+
+          def _strings_from(obj: Any) -> Iterable[str]:
+              if obj is None: return
+              if isinstance(obj, str):
+                  yield obj.lower()
+              elif isinstance(obj, (int, float)):
+                  yield str(obj).lower()
+              elif isinstance(obj, dict):
+                  for k, v in obj.items():
+                      yield str(k).lower()
+                      yield from _strings_from(v)
+              elif isinstance(obj, (list, tuple)):
+                  for it in obj:
+                      yield from _strings_from(it)
+
+          def _recent_rewards(n=8):
+              vals=[]
+              if EPLOG.exists():
+                  for line in EPLOG.read_text("utf-8").splitlines()[-n:]:
+                      try:
+                          r = json.loads(line).get("reward")
+                          if isinstance(r,(int,float)): vals.append(float(r))
+                      except: pass
+              return vals
+
+          def _last_receipts(n=4):
+              if not HIST.exists(): return []
+              files = sorted(HIST.glob("receipt-*.json"))
+              out=[]
+              for f in files[-n:]:
+                  try: out.append(_load_json(f, {}))
+                  except: pass
+              return out
+
+          def _trail_streak(seq: Iterable[str], target: str) -> int:
+              c=0
+              for x in reversed(list(seq)):
+                  if x == target: c += 1
+                  else: break
+              return c
+
+          def scan_guardrails(j: Dict[str, Any]):
+              excite = inhibit = targeted = blocks = rate_hits = 0
+              likely_keys = ["edge","edges","guards","guardrails","prebreach","hooks","topo","but","so"]
+              pools = []
+              for k in likely_keys:
+                  if isinstance(j.get(k), (dict, list)): pools.append(j[k])
+              if not pools: pools.append(j)
+
+              for obj in pools:
+                  for s in _strings_from(obj):
+                      if "rate_limit" in s or "ratelimit" in s or "throttle" in s:
+                          rate_hits += 1
+                      if any(w in s for w in EXCITE_WORDS):
+                          excite += 1
+                      if any(w in s for w in INHIBIT_WORDS):
+                          inhibit += 1
+                          blocks  += 1
+                          if any(h in s for h in TARGET_HINTS):
+                              targeted += 1
+                          elif any(h in s for h in BROAD_HINTS):
+                              pass
+              return excite, inhibit, targeted, blocks, rate_hits
+
+          def estimate_tone(recent_rewards, rate_limit_hits: int) -> str:
+              r = list(recent_rewards)
+              if len(r) < 4:
+                  return "unknown"
+              stdev = S.pstdev(r)
+              try:
+                  slope = (r[-1] - r[0]) / max(1, len(r)-1)
+              except Exception:
+                  slope = 0.0
+              if rate_limit_hits > 0 and stdev > 0.10:
+                  return "volatile"
+              if stdev <= 0.08 and abs(slope) <= 0.03:
+                  return "stable"
+              if stdev >= 0.18 or abs(slope) >= 0.10:
+                  return "volatile"
+              return "mixed"
+
+          def identity_switch_events(current: Dict[str, Any], history):
+              vals=[]
+              cur_id = (current.get("identity") or {}).get("pov", {}).get("expected_person")
+              if cur_id: vals.append(cur_id)
+              for h in history:
+                  v = (h.get("identity") or {}).get("pov", {}).get("expected_person")
+                  if v: vals.append(v)
+              if len(vals) < 2: return 0
+              switches = sum(1 for a,b in zip(vals, vals[1:]) if a != b)
+              drift = float((current.get("identity") or {}).get("pov", {}).get("drift") or 0.0)
+              if drift >= 0.6:
+                  switches += 1
+              return switches
+
+          def update_skew_memory(status: str) -> int:
+              state = _load_json(NEURO, {"skew_history":[]})
+              hist = state.get("skew_history", [])
+              hist.append(status)
+              hist = hist[-6:]
+              state["skew_history"] = hist
+              _dump_json(NEURO, state)
+              if status in ("excited","inhibited"):
+                  return _trail_streak(hist, status)
+              return 0
+
+          def main():
+              if not REC.exists():
+                  print("[err] docs/receipt.latest.json missing"); raise SystemExit(2)
+              j = _load_json(REC, {}) or {}
+
+              ex, inh, targ, blocks, rate_hits = scan_guardrails(j)
+              ei_ratio = ex / max(1, inh)
+              inhibitory_specificity = (targ / max(1, blocks)) if blocks > 0 else 1.0
+
+              status = "balanced"
+              if ei_ratio > 1.5: status = "excited"
+              elif ei_ratio < 0.7: status = "inhibited"
+              sustained = update_skew_memory(status)
+
+              tone = estimate_tone(_recent_rewards(8), rate_hits)
+              switches = identity_switch_events(j, _last_receipts(3))
+
+              note_bits=[]
+              if ei_ratio > 1.2: note_bits.append("mild E>I")
+              elif ei_ratio < 0.85: note_bits.append("mild I>E")
+              else: note_bits.append("near-balanced")
+              note_bits.append("selective braking" if inhibitory_specificity >= 0.7 else "broad braking")
+              note_bits.append(f"tone {tone}")
+              if sustained >= 2:
+                  note_bits.append(f"sustained {status} x{sustained}")
+
+              j["neuro_analogy"] = {
+                  "excitation_load": int(ex),
+                  "inhibition_load": int(inh),
+                  "ei_ratio": round(float(ei_ratio), 3),
+                  "inhibitory_specificity": round(float(inhibitory_specificity), 3),
+                  "rate_limit_hits": int(rate_hits),
+                  "neuromodulatory_tone": tone,
+                  "identity_switch_events": int(switches),
+                  "sustained_skew_windows": int(sustained),
+                  "notes": ", ".join(note_bits)
+              }
+
+              _dump_json(REC, j)
+              print(f"[ok] braincheck: E={ex} I={inh} ratio={ei_ratio:.2f} spec={inhibitory_specificity:.2f} tone={tone} switches={switches} streak={sustained}")
+
+          if __name__ == "__main__":
+              main()
+          PY
+          fi
+
+          # apply_topo_hooks.py
+          if [ ! -f scripts/apply_topo_hooks.py ]; then
+          cat > scripts/apply_topo_hooks.py <<'PY'
+          from pathlib import Path
+          import json, sys, time
+
+          REC = Path("docs/receipt.latest.json")
+          MEM = Path("docs/memory"); MEM.mkdir(parents=True, exist_ok=True)
+          EPLOG = MEM / "episodes.jsonl"
+
+          if not REC.exists():
+              print("[err] docs/receipt.latest.json missing"); sys.exit(2)
+          j = json.loads(REC.read_text("utf-8"))
+
+          def clamp(x):
+              try: return max(0.0, min(1.0, float(x)))
+              except: return 0.0
+
+          topo = j.get("topo") or {}
+          kappa    = float(topo.get("kappa", 0.10))
+          chi      = float(topo.get("chi",   0.10))
+          eps      = float(topo.get("eps",   0.05))
+          rigidity = float(topo.get("rigidity", 0.50))
+          D_topo   = float(topo.get("D_topo",   0.00))
+
+          # — temporal coupling —
+          tem = j.get("temporal") or {}
+          rh  = tem.get("rhythm") or {}
+          plv      = float(rh.get("plv") or 0.0)
+          strength = float(rh.get("strength") or 0.0)
+          variety  = float(rh.get("variety")  or 0.0)
+          is_rut   = bool(rh.get("rut", False))
+          is_chaos = bool(rh.get("chaos", False))
+          in_pocket = bool(rh.get("in_pocket", False))
+
+          if in_pocket and plv >= 0.60 and 0.30 <= strength <= 0.95 and 0.30 <= variety <= 0.80:
+              rigidity += 0.05
+              kappa    = max(0.0, kappa - 0.02)
+          if is_rut:
+              chi += 0.05; eps += 0.03; D_topo = max(D_topo, 0.10)
+          if is_chaos:
+              kappa += 0.05
+
+          # — identity coupling —
+          iden = j.get("identity") or {}
+          pov  = (iden.get("pov") or {})
+          nov  = (iden.get("novelty") or {})
+          if float(pov.get("drift") or 0.0) > 0.30:
+              chi += 0.05
+          if float(nov.get("new_phrasing_rate") or 1.0) < 0.20 or float(nov.get("loop_risk") or 0.0) >= 1.0:
+              eps += 0.03
+
+          # — continuity coupling —
+          cont = ((j.get("narrative") or {}).get("continuity") or {})
+          issues = len(cont.get("issues", []))
+          senses_hit = len(cont.get("senses_detected", []))
+          if issues > 0:
+              chi += 0.07; kappa += 0.05
+          if senses_hit >= 1:
+              rigidity += 0.03
+
+          # — neuro coupling —
+          neuro = j.get("neuro_analogy") or {}
+          ei_ratio = float(neuro.get("ei_ratio") or 1.0)
+          inhib_spec = float(neuro.get("inhibitory_specificity") or 0.5)
+          tone = (neuro.get("neuromodulatory_tone") or "unknown").lower()
+          switches = int(neuro.get("identity_switch_events") or 0)
+          sustained = int(neuro.get("sustained_skew_windows") or 0)
+
+          if sustained >= 2 and (ei_ratio > 1.5 or ei_ratio < 0.7):
+              kappa += 0.05
+          if sustained >= 3:
+              eps += 0.03
+
+          if inhib_spec < 0.5:
+              chi += 0.03
+          elif inhib_spec > 0.8:
+              chi = max(0.0, chi - 0.02)
+
+          if tone == "volatile":
+              rigidity = max(0.0, rigidity - 0.05)
+          elif tone == "stable":
+              rigidity = min(1.0, rigidity + 0.03)
+
+          if switches >= 2:
+              chi += 0.05
+              D_topo = max(D_topo, 0.20)
+
+          # — finalize —
+          kappa, chi, eps, rigidity, D_topo = map(clamp, [kappa, chi, eps, rigidity, D_topo])
+          H = clamp(1.0 - (0.40*kappa + 0.25*chi + 0.20*eps + 0.15*D_topo) + 0.10*rigidity)
+
+          j["topo"] = {
+              "kappa": round(kappa,3),
+              "chi": round(chi,3),
+              "eps": round(eps,3),
+              "rigidity": round(rigidity,3),
+              "D_topo": round(D_topo,3),
+              "H": round(H,3)
+          }
+
+          reward = float(H) - 0.10 * float(sustained)
+          ts = int(time.time())
+          try:
+              with EPLOG.open("a", encoding="utf-8") as f:
+                  f.write(json.dumps({
+                      "ts": ts,
+                      "reward": round(reward, 3),
+                      "raw_H": round(H, 3
