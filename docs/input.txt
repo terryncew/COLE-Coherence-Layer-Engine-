@@ -1,0 +1,3 @@
+Claim: The adapter builds a small reasoning graph.
+Because we link evidence with markers, structure quality is estimable.
+Therefore density vs structure is checkable.
