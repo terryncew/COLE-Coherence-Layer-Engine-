@@ -1,288 +1,182 @@
-<!doctype html><meta charset="utf-8">
-<title>COLE — Coherence Layer Engine</title>
-<meta name="viewport" content="width=device-width,initial-scale=1">
-
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>COLE · OpenLine Receipt (OLR/1.4L)</title>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <style>
-  :root{--bg:#fafafa;--card:#fff;--muted:#6a6a6a;--ok:#0a0;--warn:#c80;--bad:#c00;--line:#eee}
-  body{font:16px/1.45 -apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif;margin:28px;background:var(--bg)}
-  h1{font-size:28px;margin:0 0 6px}
-  p.lead{color:#555;margin:0 0 18px;max-width:60ch}
-  .row{display:flex;gap:16px;flex-wrap:wrap}
-  .tile{flex:1 1 360px;padding:14px;border:1px solid var(--line);border-radius:12px;background:var(--card)}
-  .muted{color:var(--muted)} .small{font-size:13px}
-  .pill{display:inline-flex;align-items:center;gap:8px;padding:6px 10px;border:1px solid var(--line);border-radius:999px;font-size:13px}
-  .dot{width:8px;height:8px;border-radius:50%}
-  .ok{color:var(--ok)} .warn{color:var(--warn)} .bad{color:var(--bad)}
-  code{background:#f3f3f3;padding:2px 6px;border-radius:6px}
-  .hint{margin-top:8px;padding:10px;border-radius:10px;background:#f7fbff;border:1px solid #e5f0ff}
-  .kv{display:flex;gap:10px;flex-wrap:wrap;margin-top:6px}
-  .kv span{background:#f5f5f5;border:1px solid #eee;border-radius:8px;padding:4px 8px}
-  .err{padding:10px;border-radius:10px;background:#fff3f3;border:1px solid #ffd0d0}
-  .tag{padding:.2em .6em;border-radius:6px;color:#fff}
+  :root{
+    --bg:#fafafa; --card:#ffffff; --ink:#0b0b0f; --muted:#6a6a6a; --line:#eaeaea;
+    --ok:#16a34a; --warn:#f59e0b; --bad:#dc2626; --chip:#f4f4f5;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 -apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Inter,Helvetica,Arial,sans-serif}
+  .wrap{max-width:980px;margin:0 auto;padding:22px}
+  h1{font-size:22px;margin:0 0 6px 0}
+  .sub{color:var(--muted);font-size:13px;margin:0 0 14px 0}
+  .grid{display:grid;grid-template-columns:repeat(6,1fr);gap:10px}
+  @media (max-width:900px){.grid{grid-template-columns:repeat(3,1fr)}}
+  @media (max-width:560px){.grid{grid-template-columns:repeat(2,1fr)}}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px}
+  .kpi{display:flex;align-items:center;gap:10px}
+  .lamp{width:12px;height:12px;border-radius:50%}
+  .ok{background:var(--ok)} .warn{background:var(--warn)} .bad{background:var(--bad)} .mutelamp{background:#c7c7cc}
+  .big{font-size:20px;font-weight:700}
+  .muted{color:var(--muted);font-size:12px}
+  .row{display:flex;gap:10px;flex-wrap:wrap;margin:12px 0 0}
+  .btn{background:#111827;color:#fff;border:1px solid #111827;padding:9px 12px;border-radius:10px;text-decoration:none;font-weight:600}
+  .btn:active{transform:translateY(1px)}
+  .tag{display:inline-block;padding:.25em .6em;border-radius:999px;color:#fff;font-size:12px}
+  .tag.green{background:var(--ok)} .tag.amber{background:var(--warn)} .tag.red{background:var(--bad)}
+  pre{white-space:pre-wrap;background:#fbfbfc;border:1px solid var(--line);border-radius:10px;padding:10px;overflow:auto}
+  .kv{display:grid;grid-template-columns:auto 1fr;gap:6px 10px;align-items:center}
+  .chip{display:inline-block;background:var(--chip);border:1px solid var(--line);border-radius:999px;padding:.25em .6em;font-size:12px}
+  .divider{height:1px;background:var(--line);margin:10px 0}
 </style>
+</head>
+<body>
+<div class="wrap">
+  <h1>COLE · OpenLine Receipt</h1>
+  <div class="sub">Lean 1.4L · “Receipts, not rhetoric.” This reads <code>docs/receipt.latest.json</code> and <code>docs/guard.14l.json</code>.</div>
 
-<!-- OpenLine card (compact) -->
-<script type="module" src="https://cdn.jsdelivr.net/gh/terryncew/openline-core@main/receipts-kit/openline-card.js"></script>
+  <div class="grid" id="grid">
+    <!-- KPI tiles injected by JS -->
+  </div>
 
-<h1>Engine</h1>
-<p class="lead">
-  Three experts (Id / Ego / Superego) each propose a move; COLE blends them in real time.
-  We reward φ* (coherence-per-cost) and penalize κ (curvature/jerk) and ε (noise).
-  Each run emits a one-card OpenLine receipt.
-</p>
+  <div class="row">
+    <a class="btn" href="./receipt.latest.json" download>Download receipt</a>
+    <a class="btn" href="./history/" id="histLink">History</a>
+  </div>
 
-<div class="row">
-  <div class="tile">
-    <!-- Status -->
-    <div class="pill" id="statusPill" hidden>
-      <span class="dot" id="statusDot"></span>
-      <span id="statusText">status</span>
+  <div class="card" style="margin-top:12px">
+    <div class="kv">
+      <div class="muted">Updated</div><div id="updated">—</div>
+      <div class="muted">Status</div><div id="status"><span class="tag">—</span></div>
+      <div class="muted">Why</div><div id="why">—</div>
+      <div class="muted">Try next</div><div id="fix">—</div>
     </div>
-
-    <div class="muted" style="margin:10px 0 6px">Latest receipt</div>
-    <!-- Replaced by card after JSON check -->
-    <div id="cardBox" class="muted">Loading…</div>
-
-    <!-- Why / Fix (plain English, one line each) -->
-    <div class="hint small" id="whyBox" hidden><b>Why not green:</b> <span id="whyText"></span></div>
-    <div class="hint small" id="fixBox" hidden><b>Try next:</b> <span id="fixText"></span></div>
-
-    <!-- Optional patch from receipt.next_try.patch -->
-    <div class="hint small" id="patchBox" hidden>
-      <b>Suggested patch</b> (auto-applied on next run): <code id="patchText"></code>
-    </div>
-
-    <!-- One-glance telemetry -->
-    <div class="kv small" id="glance" hidden>
-      <span>gain <b id="g-gain"></b></span>
-      <span>Δ_scale <b id="g-delta"></b></span>
-      <span>threshold <b id="g-thresh"></b></span>
-      <span>steps <b id="g-steps"></b></span>
-      <span>n <b id="g-n"></b></span>
-    </div>
-
-    <p class="small muted" style="margin-top:10px">
-      Source: <a href="./receipt.latest.json"><code>docs/receipt.latest.json</code></a>
-    </p>
+    <div class="divider"></div>
+    <div class="muted" id="rules">Rules: RED if cycle⁺>0, or (Δhol≥τ_hol & del_suspect), or (κ≥τ_k & UCR≥ucr_min & ES<es_min). AMBER if any one is high.</div>
   </div>
 
-  <div class="tile">
-    <div class="muted" style="margin-bottom:8px">Run it again</div>
-    <ol class="small" style="margin:0 0 10px 18px">
-      <li>GitHub → <b>Actions</b> → <i>COLE Pages (guards + status)</i></li>
-      <li>Tap <b>Run workflow</b></li>
-      <li>Refresh this page</li>
-    </ol>
-    <p class="small muted">Green = invariants satisfied. Amber/Red = the pill explains the exact miss and the fix.</p>
-    <p class="small"><a id="lnk-log" href="./tuning.log.jsonl">Tuning log</a> · <a id="lnk-prop" href="./proposals.latest.json">Proposed patch</a></p>
-    <div class="small">Receipt: <b id="verified-tag" class="tag">Pending</b></div>
+  <div class="card" style="margin-top:12px">
+    <div class="muted">Frame digest</div>
+    <pre id="digest">Loading…</pre>
   </div>
 
-  <!-- Invariants & Topology -->
-  <div class="tile" id="inv-topo" hidden>
-    <div class="muted" style="margin-bottom:6px">Invariants & Topology</div>
-    <div class="small" id="geom-line">geometry: <b id="geom-worst">n/a</b> cap usage</div>
-    <div class="small">evolution: inflections <b id="evo-inf">0</b> · flips/epoch <b id="evo-flips">0</b></div>
-    <div class="small">defect: <b id="def-class">–</b></div>
-    <div class="small">H <b id="H">–</b> · κ <b id="K">–</b> · χ <b id="X">–</b> · ε <b id="E">–</b> · D <b id="D">–</b> · R <b id="R">–</b></div>
-  </div>
-
-  <!-- Frontier Watch (shows if your script writes frontier_watch{}) -->
-  <div class="tile" id="fw-tile" hidden>
-    <div class="muted">Frontier Watch</div>
-    <div class="small" id="fwBox">Loading…</div>
-  </div>
-
-  <!-- Training evolution (v1.2) -->
-  <div class="tile" id="te-tile" hidden>
-    <div class="muted">Training evolution</div>
-    <div class="small">seed <b id="te-seed">—</b> · lineage <b id="te-len">0</b> · events <b id="te-ev">0</b></div>
-    <div class="small">largest jump <b id="te-jump">—</b> · inflections <b id="te-inf">—</b> · ewma slope <b id="te-slope">—</b></div>
-    <div class="small">grad ∥ <b id="te-gmean">—</b>±<b id="te-gstd">—</b> (max <b id="te-gmax">—</b>)</div>
-    <div class="small">causal hint <b id="te-causal">—</b></div>
+  <div class="card" style="margin-top:12px">
+    <div class="muted">Raw telemetry</div>
+    <pre id="telem">Loading…</pre>
   </div>
 </div>
 
 <script>
-(function(){
-  const $ = id => document.getElementById(id);
-  const pill=$('statusPill'), dot=$('statusDot'), txt=$('statusText');
-  const whyBox=$('whyBox'), whyText=$('whyText');
-  const fixBox=$('fixBox'), fixText=$('fixText');
-  const patchBox=$('patchBox'), patchText=$('patchText');
-  const gl=$('glance'), cardBox=$('cardBox');
+(async function(){
+  const $ = (id)=>document.getElementById(id);
+  const grid = $('grid');
 
-  const color = s => (s==='green'?'ok':(s==='amber'?'warn':'bad'));
-  const dotColor = s => ({green:'#0a0', amber:'#c80', red:'#c00'}[s]||'#bbb');
+  const cfgDefault = { tau_k:0.75, tau_hol:0.35, ucr_min:0.40, es_min:0.25 };
+  let cfg = cfgDefault;
 
-  // cache-bust
-  const url = new URL('receipt.latest.json', location.href);
-  url.searchParams.set('v', Date.now().toString());
+  try{
+    const cr = await fetch('./guard.14l.json?ts='+Date.now());
+    if(cr.ok){ cfg = {...cfgDefault, ...(await cr.json())}; }
+  }catch{}
 
-  fetch(url,{cache:'no-store'})
-    .then(r=>{ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
-    .then(j=>{
-      // Insert the card once JSON exists
-      const card=document.createElement('openline-card');
-      card.setAttribute('mode','compact');
-      card.setAttribute('src', url.pathname + url.search);
-      cardBox.replaceChildren(card);
-
-      const t = j.telem || {};
-      const gain   = Number(t.regen_gain || 0);
-      const drift  = Number(t.delta_scale || 0);
-      const thresh = Number(j.threshold ?? 0.15);
-
-      // derive status from telemetry (so card and pill match)
-      const s = (gain <= 0.02) ? 'red' : ((gain >= 0.20 && drift <= thresh) ? 'green' : 'amber');
-
-      // Status pill
-      txt.textContent = s;
-      dot.style.background = dotColor(s);
-      pill.className = 'pill ' + color(s);
-      pill.hidden = false;
-
-      // Why (single crisp reason)
-      let why = Array.isArray(j.but) && j.but[0] ? j.but[0] : '';
-      if (!why) {
-        if (drift > thresh) why = `drift Δ_scale ${drift.toFixed(3)} > threshold ${thresh.toFixed(3)}`;
-        else if (gain <= 0.02) why = 'no meaningful gain';
-        else if (gain < 0.20)  why = `low gain ${gain.toFixed(3)}`;
-      }
-      if (s!=='green' && why){ whyText.textContent = why; whyBox.hidden = false; }
-
-      // Fix (from receipt or generic)
-      let fix = (typeof j.so === 'string' && j.so.trim()) ? j.so.trim() : '';
-      if (!fix) {
-        if (drift > thresh) fix = 'increase smoothing/coarse or reduce pull; add steps if edges are oversharp';
-        else if (gain < 0.20) fix = 'bump steps or lower noise; check blend weights';
-      }
-      if (s!=='green' && fix){ fixText.textContent = fix; fixBox.hidden = false; }
-
-      // Optional patch display
-      if (j.next_try && Array.isArray(j.next_try.patch)) {
-        patchText.textContent = j.next_try.patch.map(p => `${p.key}→${p.to}`).join(' · ');
-        patchBox.hidden = false;
-      }
-
-      // Glance telemetry
-      document.getElementById('g-gain').textContent   = gain.toFixed(3);
-      document.getElementById('g-delta').textContent  = drift.toFixed(3);
-      document.getElementById('g-thresh').textContent = thresh.toFixed(3);
-      document.getElementById('g-steps').textContent  = Number(t.steps || 0);
-      document.getElementById('g-n').textContent      = Number(t.n || 0);
-      gl.hidden = false;
-    })
-    .catch(err=>{
-      cardBox.innerHTML =
-        `<div class="err"><b>No JSON found</b> at <code>${url.pathname}</code> (${err.message}).
-          Run <i>Actions → COLE Pages (guards + status)</i> or check the file path.</div>`;
-    });
-
-  // Hide optional links if missing
-  async function hideIfMissing(id, path){
-    try{ const r = await fetch(path,{method:'HEAD',cache:'no-store'}); if(!r.ok) document.getElementById(id).style.display='none'; }
-    catch{ document.getElementById(id).style.display='none'; }
+  function lamp(cls){ const d=document.createElement('div'); d.className='lamp '+cls; return d; }
+  function tile(label, value, hint, cls){
+    const c=document.createElement('div'); c.className='card';
+    const row=document.createElement('div'); row.className='kpi';
+    row.appendChild(lamp(cls||'mutelamp'));
+    const b=document.createElement('div'); b.className='big'; b.textContent=value;
+    row.appendChild(b);
+    const cap=document.createElement('div');
+    cap.innerHTML = `<div class="muted">${label}</div><div class="muted" style="font-size:11px">${hint||''}</div>`;
+    c.appendChild(row); c.appendChild(cap); return c;
   }
-  hideIfMissing('lnk-log','./tuning.log.jsonl');
-  hideIfMissing('lnk-prop','./proposals.latest.json');
-})();
-</script>
+  const cK = k => (k>=0.85?'bad':(k>=0.70?'warn':'ok'));
+  const cD = d => (d>=cfg.tau_hol?'warn':'ok');
 
-<!-- Verified tag (works if docs/status.json exists; otherwise stays "Pending") -->
-<script>
-fetch('./status.json?'+Date.now()).then(r=>r.ok?r.json():null).then(s=>{
-  if(!s) return;
-  const tag=document.getElementById('verified-tag');
-  tag.textContent = s.verified ? 'Verified' : 'Pending';
-  tag.style.background = s.verified ? '#065f46' : '#92400e';
-}).catch(()=>{});
-</script>
-
-<!-- Topology tile -->
-<script>
-(async()=>{
+  let rec = null;
   try{
-    const u = new URL('./receipt.latest.json', location.href);
-    u.searchParams.set('v', Date.now().toString()); // cache-bust
-    const r = await fetch(u.toString(), {cache:'no-store'});
-    if(!r.ok) return;
-    const j = await r.json();
-
-    const rows = Array.isArray(j.geometry_attestation)? j.geometry_attestation : [];
-    let worst = 0; const caps={spectral_max:2.0,orthogonality_error:0.08,lipschitz_budget_used:0.80};
-    for(const row of rows){
-      for(const k in caps){
-        const v = +row[k]; if(!Number.isFinite(v)) continue;
-        worst = Math.max(worst, v / caps[k]);
-      }
-    }
-    const worstStr = (Number.isFinite(worst) && worst>0) ? (worst.toFixed(2)+'×') : 'n/a';
-    document.getElementById('geom-worst').textContent = worstStr;
-
-    const evo = j.training_evolution || {};
-    const shape = evo.loss_trajectory_shape || {};
-    document.getElementById('evo-inf').textContent = +(shape.inflections||0);
-    document.getElementById('evo-flips').textContent = +(j.training_evolution?.policy_flips_per_epoch||0);
-
-    const dt = j.defect_topology || {};
-    document.getElementById('def-class').textContent = (dt.class||'–');
-
-    const t = j.topo || {};
-    const fmt = x => (Number.isFinite(+x)? (+x).toFixed(3) : '–');
-    document.getElementById('H').textContent = fmt(t.H);
-    document.getElementById('K').textContent = fmt(t.kappa);
-    document.getElementById('X').textContent = fmt(t.chi);
-    document.getElementById('E').textContent = fmt(t.eps);
-    document.getElementById('D').textContent = fmt(t.D_topo);
-    document.getElementById('R').textContent = fmt(t.rigidity);
-
-    document.getElementById('inv-topo').hidden = false;
-  }catch{}
-})();
-</script>
-
-<!-- Frontier Watch tile (non-blocking; shows if frontier_watch exists) -->
-<script>
-(async()=>{
-  try{
-    const r=await fetch('./receipt.latest.json?'+Date.now()); if(!r.ok) return;
-    const j=await r.json(); const fw=j.frontier_watch||{};
-    if(!fw || !fw.summary) return;
-    const s = Array.isArray(fw.signals)? fw.signals : [];
-    const sum = fw.summary || {};
-    const top = s.slice().sort((a,b)=>(b.delta_frame||0)-(a.delta_frame||0)).slice(0,2);
-    const row = x => `
-      <div style="margin-top:6px">
-        <b>${(x.title||x.id||'signal')}</b> <span class="muted">— ${(x.source||'')}</span><br/>
-        κ=${Number(x.kappa||0).toFixed(2)} · ε=${Number(x.epsilon||0).toFixed(2)} · L=${Number(x.legibility||0).toFixed(2)} · Δ=${Number(x.delta_frame||0).toFixed(2)}
-      </div>`;
-    document.getElementById('fwBox').innerHTML = s.length
-      ? `<div>signals: <b>${sum.count||s.length}</b> · avg novelty <b>${Number(sum.avg_novelty||0).toFixed(2)}</b> · avg constraint <b>${Number(sum.avg_constraint||0).toFixed(2)}</b></div>
-         ${top.map(row).join('')}`
-      : 'No signals';
-    document.getElementById('fw-tile').hidden=false;
+    const r = await fetch('./receipt.latest.json?ts='+Date.now());
+    rec = await r.json();
   }catch(e){}
-})();
-</script>
+  if(!rec){
+    grid.appendChild(tile('No receipt found', '—', 'Run your Pages workflow', 'warn'));
+    $('digest').textContent = 'Missing docs/receipt.latest.json';
+    $('telem').textContent = '—';
+    return;
+  }
 
-<!-- Training evolution tile (v1.2) -->
-<script>
-(async()=>{
-  try{
-    const r=await fetch('./receipt.latest.json?'+Date.now()); if(!r.ok) return;
-    const j=await r.json(); const te=j.training_evolution||{};
-    const G=(id,v)=>{const e=document.getElementById(id); if(e) e.textContent=v;};
-    if(!te.seed && !te.checkpoint_lineage) return;
-    G('te-seed', te.seed ?? '—'); G('te-len', (te.checkpoint_lineage||[]).length);
-    G('te-ev', (te.capability_events||[]).length);
-    const sh=te.loss_trajectory_shape||{};
-    G('te-jump', (sh.largest_jump??'—')); G('te-inf', (sh.inflections??'—'));
-    G('te-slope', (sh.ewma_slope!=null && !isNaN(sh.ewma_slope)) ? Number(sh.ewma_slope).toFixed(3) : '—');
-    const gs=te.grad_norm_stats||{};
-    G('te-gmean', (gs.mean??'—')); G('te-gstd', (gs.std??'—')); G('te-gmax', (gs.max??'—'));
-    G('te-causal', te.causal_link_hint ? 'true' : 'false');
-    document.getElementById('te-tile').hidden=false;
-  }catch{}
+  // grab fields (lean 1.4L)
+  const frame = rec.openline_frame || {};
+  const digest = frame.digest || {};
+  const telem  = frame.telem || {};
+  const latest = (rec.temporal && rec.temporal.latest) || {};
+
+  const k = Number.isFinite(latest.kappa) ? latest.kappa : (telem.kappa_eff ?? NaN);
+  const dhol = Number.isFinite(latest.delta_hol) ? latest.delta_hol : (telem.delta_hol ?? NaN);
+  const ucr = digest.ucr ?? NaN;
+  const es  = telem.evidence_strength ?? NaN;
+  const cycles = digest.cycle_plus ?? 0;
+  const xfront = digest.x_frontier ?? 0;
+  const depth = digest.depth ?? 0;
+  const soc = digest.s_over_c ?? NaN;
+  const delSus = !!telem.del_suspect;
+  const tokens = telem.cost_tokens ?? NaN;
+
+  // compute status if missing
+  function computeStatus(){
+    if (cycles>0) return 'red';
+    const red = ( (dhol>=cfg.tau_hol && delSus) ||
+                  (k>=cfg.tau_k && ucr>=cfg.ucr_min && es<cfg.es_min) );
+    if (red) return 'red';
+    const amber = (k>=cfg.tau_k) || (dhol>=cfg.tau_hol) || (ucr>=cfg.ucr_min);
+    return amber ? 'amber' : 'green';
+  }
+  const status = (rec.status || '').toLowerCase() || computeStatus();
+
+  // KPIs
+  grid.appendChild(tile('κ (stress)', isFinite(k)? k.toFixed(3):'—', 'Density vs structure', cK(k)));
+  grid.appendChild(tile('Δhol (drift)', isFinite(dhol)? dhol.toFixed(3):'—', 'Path mismatch (EWMA JSD)', cD(dhol)));
+  grid.appendChild(tile('UCR', isFinite(ucr)? (ucr*100).toFixed(0)+'%':'—', 'Unsupported-claim ratio', (ucr>=cfg.ucr_min?'warn':'ok')));
+  grid.appendChild(tile('ES', isFinite(es)? (es*100).toFixed(0)+'%':'—', 'Evidence strength', (es<cfg.es_min?'warn':'ok')));
+  grid.appendChild(tile('Cycles', String(cycles), 'cycle⁺ > 0 → RED', (cycles>0?'bad':'ok')));
+  grid.appendChild(tile('X (contradictions)', String(xfront), 'Unresolved contradictions', (xfront>0?'warn':'ok')));
+
+  // status strip
+  const sTag = document.createElement('span');
+  sTag.className = 'tag '+status;
+  sTag.textContent = status.toUpperCase();
+  $('status').replaceChildren(sTag);
+  $('updated').textContent = new Date((frame.t_logical||Date.now())*1000).toLocaleString();
+
+  // why & fix
+  let why='—', fix='—';
+  if (cycles>0){ why='Circular reasoning detected (cycle⁺>0)'; fix='Break the loop; add external evidence or restructure claims.'; }
+  else if (dhol>=cfg.tau_hol && delSus){ why='Path drift with potential silent deletion'; fix='Add a resolution/handling sentence for removed contradictions.'; }
+  else if (k>=cfg.tau_k && ucr>=cfg.ucr_min && es<cfg.es_min){ why='High stress + unsupported claims + weak evidence'; fix='Add citations or “according to…” lines near claims.'; }
+  else if (k>=cfg.tau_k){ why='Elevated stress (κ high)'; fix='Shorten or add structure/support so S* rises.'; }
+  else if (dhol>=cfg.tau_hol){ why='Path drift (Δhol high)'; fix='Stabilize reasoning across turns; avoid rewriting without resolution.'; }
+  else if (ucr>=cfg.ucr_min){ why='Many claims lack nearby support'; fix='Place an evidence sentence or citation within ±1 sentence.'; }
+
+  $('why').textContent = why;
+  $('fix').textContent = fix;
+
+  // rules text with thresholds
+  $('rules').textContent =
+    `Rules: RED if cycle⁺>0, or (Δhol≥${cfg.tau_hol} & del_suspect), or (κ≥${cfg.tau_k} & UCR≥${cfg.ucr_min} & ES<${cfg.es_min}). AMBER if any one is high.`;
+
+  // raw blocks
+  $('digest').textContent = JSON.stringify(digest, null, 2);
+  $('telem').textContent  = JSON.stringify(telem,  null, 2);
+
+  // small extras
+  if (!isFinite(soc) && xfront===0) {
+    // keep the tile tidy; not critical to show s/c if X=0
+  }
 })();
 </script>
+</body>
+</html>
