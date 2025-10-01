@@ -1,64 +1,27 @@
-name: "Self-tune NCA → Receipt"
+# .github/workflows/self_tune.yml
+name: self_tune
 
 on:
-  workflow_dispatch:
-  schedule:
-    - cron: "0 */12 * * *"
+  workflow_dispatch: {}
+  # remove "push" trigger so it doesn't run on every commit
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   tune:
     runs-on: ubuntu-latest
+    env:
+      # expose secret to the job as ENV (never use secrets.* inside if:)
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-
-      - name: Install deps
+      - name: Bail out cleanly if no key
         run: |
-          python -m pip install --upgrade pip
-          python -m pip install numpy pynacl
-
-      - name: Self-tune and emit receipt
-        run: python scripts/self_tune.py
-
-      # Optional signing: only runs if RECEIPT_PRIV secret is set
-      - name: Maybe sign receipt (optional)
-        env:
-          RECEIPT_PRIV: ${{ secrets.RECEIPT_PRIV }}
-        shell: bash
-        run: |
-          if [ -n "$RECEIPT_PRIV" ]; then
-            # Indent-heredoc, then strip leading spaces before feeding to Python
-            cat <<'PY' | sed -E 's/^[[:space:]]+//' | python -
-              import json, os, time, binascii
-              from pathlib import Path
-              from nacl.signing import SigningKey
-
-              p = Path("docs/receipt.latest.json")
-              data = p.read_bytes()
-              sk = SigningKey(binascii.unhexlify(os.environ["RECEIPT_PRIV"]))
-              sig = sk.sign(data).signature.hex()
-              pub = sk.verify_key.encode().hex()
-
-              rec = json.loads(data.decode())
-              rec["sig"] = {"alg": "ed25519", "ts": int(time.time()), "pub": pub, "sig": sig}
-              p.write_text(json.dumps(rec, indent=2), encoding="utf-8")
-              print("[ok] signed")
-PY
-          else
-            echo "No RECEIPT_PRIV secret set; skipping signing."
+          if [ -z "$ANTHROPIC_API_KEY" ]; then
+            echo "No ANTHROPIC_API_KEY configured; exiting OK."; exit 0
           fi
 
-      - name: Commit artifacts
-        uses: stefanzweifel/git-auto-commit-action@v5
-        with:
-          commit_message: "chore: self-tune → update receipt, params, log"
-          file_pattern: |
-            docs/receipt.latest.json
-            docs/tuning.log.jsonl
-            params.json
+      - name: Do tuning work
+        run: echo "…place tuning steps here…"
