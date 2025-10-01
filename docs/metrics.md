@@ -1,19 +1,18 @@
-# Coherence Metrics (v0)
+# OLR 1.4L: Telemetry & Guard (Lean)
 
-**Inputs**  
-- `z_L` — token length z-score (clipped to ±3)  
-- `H_s` — token entropy, normalized to [0,1]  
-- `r` — rhetorical marker rate, normalized to [0,1]  
-- `φ_topo` — topology quality in [0,1]  
-- `φ_sem_proxy` — 0.6·SDI + 0.4·(1−CR), in [0,1]
+**Digest**: `cycle_plus` (loops), `x_frontier` (contradictions), `s_over_c` (supports / contradictions), `depth`, `ucr` (unsupported-claim ratio).
 
-**Formulas**  
-- Density side: `ρ = 0.45·|z_L| + 0.35·H_s + 0.20·r`  
-- Structure side: `S* = 0.45·φ_topo + 0.45·φ_sem_proxy + 0.10`  
-- Kappa: `κ = σ( γ · (ρ/S* − 1) )`, with `γ = 2.5`  
-- Holonomy: `Δ_hol = JSD(digest_{t-1}, digest_t)`; dashboard uses EWMA smoothing.
+**Telemetry**: `phi_topo` (structure from E/N, depth, cycles), `phi_sem` = 0.5·SDI + 0.3·(1–compression) + 0.2·EvidenceStrength, `kappa_eff` (centered stress), `delta_hol` (EWMA JSD on digest+ucr), `evidence_strength` (fraction of sentences with evidence cues), `del_suspect` (contradictions dropped with no resolution language).
 
-**Guard bands (default)**  
-- RED if `(Δ_hol_smooth > 0.35 AND κ > 0.85)` OR `cycle_plus ≥ 4`  
-- AMBER if `κ > 0.75` OR `x_frontier ≥ 3`  
-- GREEN otherwise
+**Stress (κ):**  
+\[
+\rho = 0.40|z_L| + 0.30 H_s + 0.15\,\text{rate} + 0.15\,\text{UCR},\quad
+S^\* = 0.50\,\phi_\mathrm{topo} + 0.40\,\phi_\mathrm{sem} + 0.10,\quad
+\kappa = \sigma\bigl(2.2 \cdot (\rho/S^\* - 1)\bigr)
+\]
+
+**Policy (config: `docs/guard.14l.json`)**  
+- **RED** if `cycle_plus>0`, or (`delta_hol≥tau_hol` **and** `del_suspect`), or (`kappa≥tau_k` **and** `ucr≥ucr_min` **and** `evidence_strength<es_min`).  
+- **AMBER** if any one of {`kappa≥tau_k`, `delta_hol≥tau_hol`, `ucr≥ucr_min`} else **GREEN**.
+
+All math is heuristic and observable. No dependencies; runs on-device.
