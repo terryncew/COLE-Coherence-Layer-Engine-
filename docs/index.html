@@ -5,7 +5,7 @@
 <title>COLE · OpenLine Receipt (OLR/1.4L)</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <style>
-  /* ——— Light theme, calm + readable ——— */
+  /* Light, calm, readable */
   :root{
     --bg:#ffffff; --ink:#0b0b10; --muted:#6a6f7a; --line:#e9ecf2; --tile:#ffffff;
     --ok:#16a34a; --warn:#f59e0b; --bad:#dc2626; --chip:#f4f6fb; --chipline:#e6eaf3;
@@ -17,7 +17,7 @@
   h1{font-size:22px;margin:0}
   .sub{font-size:12px;color:var(--muted);margin:4px 0 0}
 
-  /* KPI tiles (top) */
+  /* KPI tiles */
   .grid{display:grid;grid-template-columns:repeat(6,1fr);gap:10px}
   @media (max-width:900px){.grid{grid-template-columns:repeat(3,1fr)}}
   @media (max-width:560px){.grid{grid-template-columns:repeat(2,1fr)}}
@@ -27,8 +27,6 @@
   .ok{background:var(--ok)} .warn{background:var(--warn)} .bad{background:var(--bad)} .mutelamp{background:#c7c7cc}
   .big{font-size:20px;font-weight:700}
   .muted{color:var(--muted);font-size:12px}
-
-  /* Status + actions */
   .row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
   .btn{display:inline-block;background:#0b0b10;color:#fff;text-decoration:none;border:1px solid var(--line);padding:10px 12px;border-radius:10px;font-weight:700}
   .btn:active{transform:translateY(1px)}
@@ -40,17 +38,23 @@
 
   /* Bars */
   .barrow{display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:center}
-  .bar{width:100%;height:10px;border-radius:999px;background:#f3f5f9;border:1px solid var(--line);position:relative;overflow:hidden}
+  .bar{position:relative;width:100%;height:10px;border-radius:999px;background:#f3f5f9;border:1px solid var(--line);overflow:hidden}
   .bar .fill{position:absolute;left:0;top:0;bottom:0;background:currentColor;opacity:.9}
-  .bar .tick{position:absolute;top:-2px;bottom:-2px;width:2px;background:var(--line)}
+  .bar .tick{position:absolute;top:-2px;bottom:-2px;width:2px;background:#9aa3b2}
 
-  /* Coherence glyph (shape) */
+  /* Glyph */
   .glyphTitle{font-size:12px;color:var(--muted);margin:0 0 6px}
   .svgbox{width:100%;aspect-ratio:1/1;display:block}
   .legend{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;font-size:12px;color:var(--muted)}
   .chip{background:var(--chip);border:1px solid var(--chipline);border-radius:999px;padding:.25em .6em}
+
   .twoCols{display:grid;grid-template-columns:1.1fr .9fr;gap:10px}
   @media (max-width:860px){.twoCols{grid-template-columns:1fr}}
+
+  .note{font-size:12px;color:var(--muted)}
+  .success{background:#ecfdf5;border:1px solid #d1fae5;color:#065f46;padding:10px;border-radius:10px}
+  .warnbox{background:#fff7ed;border:1px solid #ffedd5;color:#7c2d12;padding:10px;border-radius:10px}
+  .redbox{background:#fef2f2;border:1px solid #fee2e2;color:#7f1d1d;padding:10px;border-radius:10px}
 </style>
 </head>
 <body>
@@ -65,10 +69,10 @@
     </div>
   </header>
 
-  <!-- Top: beginner-friendly KPI tiles -->
+  <!-- Top: KPI tiles -->
   <section class="grid" id="grid"></section>
 
-  <!-- Middle: shape + bars (teaches by geometry) -->
+  <!-- Middle: glyph + bars -->
   <section class="twoCols" style="margin-top:10px">
     <div class="card">
       <div class="glyphTitle">Coherence glyph (risk grows outward)</div>
@@ -95,6 +99,11 @@
       </div>
 
       <div class="divider"></div>
+      <div id="msgBox" class="success" hidden>All guardrails within thresholds. Looks good — no action needed.</div>
+      <div id="warnBox" class="warnbox" hidden></div>
+      <div id="redBox"  class="redbox"  hidden></div>
+
+      <div class="divider"></div>
       <div class="kv">
         <div class="muted">Updated</div><div id="updated">—</div>
         <div class="muted">Why</div><div id="why">—</div>
@@ -107,6 +116,8 @@
   <section class="card" style="margin-top:10px">
     <div class="muted" id="rules">Rules: RED if cycle⁺>0; or (Δhol≥τ_hol & del_suspect); or (κ≥τ_k & UCR≥ucr_min & ES<es_min). AMBER if any one is high.</div>
   </section>
+
+  <p class="note" style="margin-top:8px">Tip: Keep citations near claims; avoid silent deletions; stable paths beat long monologues.</p>
 </div>
 
 <script>
@@ -117,7 +128,9 @@
   const glyph=$('glyph'), leg=$('legend');
   const barK=$('barK'), barD=$('barD'), barKTick=$('barKTick'), barDTick=$('barDTick');
   const barKVal=$('barKVal'), barDVal=$('barDVal');
+  const msgBox=$('msgBox'), warnBox=$('warnBox'), redBox=$('redBox');
 
+  // helpers
   function tile(label, value, hint, cls){
     const c=document.createElement('div'); c.className='card';
     const row=document.createElement('div'); row.className='kpi';
@@ -127,12 +140,21 @@
     row.appendChild(lamp); row.appendChild(b); c.appendChild(row); c.appendChild(cap); return c;
   }
   const cfgDefault={tau_k:.75,tau_hol:.35,ucr_min:.40,es_min:.25};
-  async function jget(path){ try{ const u=new URL(path,location.href); u.searchParams.set('v',Date.now()); const r=await fetch(u,{cache:'no-store'}); return r.ok? r.json(): null; }catch{return null;} }
+  async function jget(path){
+    try{ const u=new URL(path,location.href); u.searchParams.set('v',Date.now()); const r=await fetch(u,{cache:'no-store'}); return r.ok? r.json(): null; }
+    catch{ return null; }
+  }
+
   const rec = await jget('./receipt.latest.json');
   const cfg = await jget('./guard.14l.json') || cfgDefault;
 
-  if(!rec){ grid.appendChild(tile('No receipt found','—','Add docs/receipt.latest.json','warn')); return; }
+  if(!rec){
+    grid.appendChild(tile('No receipt found','—','Add docs/receipt.latest.json','warn'));
+    document.getElementById('rules').textContent='No receipt found. Run your workflow to generate docs/receipt.latest.json.';
+    return;
+  }
 
+  // fields
   const of=rec.openline_frame||{}, t=of.telem||{}, d=of.digest||{}, latest=(rec.temporal&&rec.temporal.latest)||{};
   const k   = Number.isFinite(+t.kappa_eff)? +t.kappa_eff : (Number.isFinite(+latest.kappa)? +latest.kappa : 0);
   const dhol= Number.isFinite(+t.delta_hol)? +t.delta_hol : (Number.isFinite(+latest.delta_hol)? +latest.delta_hol : 0);
@@ -141,7 +163,7 @@
   const cyc = Number.isFinite(+d.cycle_plus)? +d.cycle_plus : 0;
   const X   = Number.isFinite(+d.x_frontier)? +d.x_frontier : 0;
 
-  // Status (same policy as guard)
+  // status (policy)
   function policyStatus(){
     if (cyc>0) return 'red';
     const red = ( (dhol>=cfg.tau_hol && (t.del_suspect===true)) ||
@@ -154,55 +176,73 @@
   const color = s => s==='red' ? '#dc2626' : (s==='amber' ? '#f59e0b' : '#16a34a');
 
   // KPI tiles
-  const cK = v => (v>=.85?'bad':(v>=.70?'warn':'ok'));
+  const cK = v => (v>=cfg.tau_k?'warn':'ok');
   const cD = v => (v>=cfg.tau_hol?'warn':'ok');
+  const cU = v => (v>=cfg.ucr_min?'warn':'ok');
+  const cE = v => (v< cfg.es_min?'warn':'ok');
   grid.appendChild(tile('κ (stress)', k.toFixed(3), 'Density vs structure', cK(k)));
   grid.appendChild(tile('Δhol (drift)', dhol.toFixed(3), 'Path mismatch (EWMA JSD)', cD(dhol)));
-  grid.appendChild(tile('UCR', (ucr*100).toFixed(0)+'%', 'Unsupported-claim ratio', (ucr>=cfg.ucr_min?'warn':'ok')));
-  grid.appendChild(tile('ES', (es*100).toFixed(0)+'%', 'Evidence strength', (es<cfg.es_min?'warn':'ok')));
+  grid.appendChild(tile('UCR', (ucr*100).toFixed(0)+'%', 'Unsupported-claim ratio', cU(ucr)));
+  grid.appendChild(tile('ES', (es*100).toFixed(0)+'%', 'Evidence strength', cE(es)));
   grid.appendChild(tile('Cycles', String(cyc), 'cycle⁺ > 0 → RED', (cyc>0?'bad':'ok')));
   grid.appendChild(tile('X (contradictions)', String(X), 'Unresolved contradictions', (X>0?'warn':'ok')));
 
-  // Status pill
+  // Status pill + updated time
   txt.textContent=status.toUpperCase();
   dot.className='dot '+(status==='red'?'badd':(status==='amber'?'warnd':'okd'));
   pill.hidden=false;
   document.getElementById('updated').textContent = new Date((of.t_logical? of.t_logical*1000 : Date.now())).toLocaleString();
 
-  // Why / Try next
-  let why='—', fix='—';
-  if (cyc>0){ why='Circular reasoning detected'; fix='Break the loop; add external evidence or restructure claims.'; }
+  // Why / Try next + friendly messages
+  let why='', fix='';
+  if (cyc>0){ why='Circular reasoning detected (cycle⁺>0)'; fix='Break the loop; add external evidence or restructure claims.'; }
   else if (dhol>=cfg.tau_hol && t.del_suspect){ why='Path drift with potential silent deletion'; fix='Add a resolution/handling sentence for removed contradictions.'; }
   else if (k>=cfg.tau_k && ucr>=cfg.ucr_min && es<cfg.es_min){ why='High stress + unsupported claims + weak evidence'; fix='Add citations or “according to…” near claims.'; }
   else if (k>=cfg.tau_k){ why='Elevated stress (κ high)'; fix='Shorten or add structure/support so S* rises.'; }
   else if (dhol>=cfg.tau_hol){ why='Path drift (Δhol high)'; fix='Stabilize reasoning across turns; avoid rewriting without resolution.'; }
   else if (ucr>=cfg.ucr_min){ why='Many claims lack nearby support'; fix='Place an evidence sentence or citation within ±1 sentence.'; }
-  $('why').textContent=why; $('fix').textContent=fix;
 
-  // Rules with thresholds
+  // Always show a positive message on GREEN
+  if (status==='green' && !why){
+    why = 'All guardrails within thresholds';
+    fix = 'No action needed';
+    msgBox.hidden=false;   // friendly banner
+    warnBox.hidden=true; redBox.hidden=true;
+  } else if (status==='amber'){
+    warnBox.textContent = 'Heads up: something needs a quick look. See “Why” and “Try next”.';
+    warnBox.hidden=false; msgBox.hidden=true; redBox.hidden=true;
+  } else if (status==='red'){
+    redBox.textContent = 'Blocked: guardrails tripped. Fix the issue and re-run.';
+    redBox.hidden=false; warnBox.hidden=true; msgBox.hidden=true;
+  }
+
+  $('why').textContent = why || '—';
+  $('fix').textContent = fix || '—';
+
+  // Rules text with thresholds
   document.getElementById('rules').textContent =
     `Rules: RED if cycle⁺>0; or (Δhol≥${cfg.tau_hol} & del_suspect); or (κ≥${cfg.tau_k} & UCR≥${cfg.ucr_min} & ES<${cfg.es_min}). AMBER if any one is high.`;
 
-  // Bars
+  // Bars (0..1 scale; tick shows threshold)
   function setBar(bar, tick, value, thresh){
-    const pct=Math.max(0, Math.min(1, value/Math.max(thresh,1e-9)));
+    const fill = Math.max(0, Math.min(1, value));
     bar.style.color = color(status);
-    bar.querySelector('.fill').style.width = (pct*100).toFixed(1)+'%';
-    tick.style.left = ((1/Math.max(1, thresh))*100).toFixed(1)+'%'; // small visual marker
+    bar.querySelector('.fill').style.width = (fill*100).toFixed(1)+'%';
+    tick.style.left = (Math.max(0, Math.min(1, thresh))*100).toFixed(1)+'%';
   }
-  setBar(barK, barKTick, k, cfg.tau_k||.75);
-  setBar(barD, barDTick, dhol, cfg.tau_hol||.35);
+  setBar(barK, barKTick, k,   cfg.tau_k||.75);
+  setBar(barD, barDTick, dhol,cfg.tau_hol||.35);
   barKVal.textContent = k.toFixed(3);
   barDVal.textContent = dhol.toFixed(3);
 
-  // Coherence glyph (6 axes)
+  // Coherence glyph (6 axes; normalize by thresholds; outward = risk)
   const axes = [
-    {label:'κ',     val: Math.max(0, Math.min(1, k/(cfg.tau_k||.75)))},
-    {label:'Δhol',  val: Math.max(0, Math.min(1, dhol/(cfg.tau_hol||.35)))},
-    {label:'UCR',   val: Math.max(0, Math.min(1, ucr/(cfg.ucr_min||.4)))},
-    {label:'low ES',val: Math.max(0, Math.min(1, (cfg.es_min - es)/(cfg.es_min||.25)))},
+    {label:'κ',     val: Math.max(0, Math.min(1, (cfg.tau_k? k/cfg.tau_k : 0)))},
+    {label:'Δhol',  val: Math.max(0, Math.min(1, (cfg.tau_hol? dhol/cfg.tau_hol : 0)))},
+    {label:'UCR',   val: Math.max(0, Math.min(1, (cfg.ucr_min? ucr/cfg.ucr_min : 0)))},
+    {label:'low ES',val: Math.max(0, Math.min(1, (cfg.es_min? (cfg.es_min - es)/cfg.es_min : 0)))},
     {label:'cycles',val: cyc>0 ? 1 : 0},
-    {label:'X',     val: Math.max(0, Math.min(1, X/3))}
+    {label:'X',     val: Math.max(0, Math.min(1, X/3))}  // scale-of-3 for quick feel
   ];
   const cx=60, cy=60, R=48, N=axes.length;
 
@@ -232,12 +272,12 @@
   const path='M'+pts.map(p=>p[0].toFixed(2)+','+p[1].toFixed(2)).join('L')+'Z';
   const poly=document.createElementNS('http://www.w3.org/2000/svg','path');
   poly.setAttribute('d', path);
-  poly.setAttribute('fill', status==='red'?'#fee2e2':(status==='amber'?'#fff3cd':'#def7ec'));
+  poly.setAttribute('fill', status==='red'?'#fee2e2':(status==='amber'?'#fff3cd':'#ecfdf5'));
   poly.setAttribute('stroke', color(status)); poly.setAttribute('stroke-width','1.6'); glyph.appendChild(poly);
   const hub=document.createElementNS('http://www.w3.org/2000/svg','circle');
   hub.setAttribute('cx',cx); hub.setAttribute('cy',cy); hub.setAttribute('r',2.1); hub.setAttribute('fill',color(status)); glyph.appendChild(hub);
 
-  // legend chips (real values)
+  // legend chips (actual values)
   const chips=[`κ ${k.toFixed(3)}`, `Δhol ${dhol.toFixed(3)}`, `UCR ${(ucr*100).toFixed(0)}%`, `ES ${(es*100).toFixed(0)}%`, `cycles ${cyc}`, `X ${X}`];
   chips.forEach(s=>{ const span=document.createElement('span'); span.className='chip'; span.textContent=s; leg.appendChild(span); });
 })();
