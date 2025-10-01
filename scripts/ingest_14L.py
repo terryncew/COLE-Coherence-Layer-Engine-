@@ -174,7 +174,7 @@ def compute_kappa(length_tokens: int, mu_len: float, var_len: float,
     std = max(1e-6, var_len) ** 0.5
     zL = 0.0 if std < 1e-6 else max(-3.0, min(3.0, (length_tokens - mu_len) / std))
     rho = 0.40 * abs(zL) + 0.30 * Hs + 0.15 * rate + 0.15 * UCR
-    Sstar = max(1e-3, 0.50 * phi_topo + 0.40 * phi_sem + 0.10)  # small cushion
+    Sstar = max(1e-3, 0.50 * phi_topo + 0.40 * phi_sem + 0.10)
     return sigma(2.2 * (rho / Sstar - 1.0))
 
 def structural_entropy(text: str) -> float:
