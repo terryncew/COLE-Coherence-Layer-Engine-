@@ -34,35 +34,30 @@ jobs:
       - name: Ensure folders
         run: |
           mkdir -p docs/history docs/style_history docs/memory schema scripts artifacts logs/train logs/eval
+          mkdir -p .state
 
       - name: Bootstrap receipt (if missing)
         run: |
           if [ ! -f docs/receipt.latest.json ]; then
             cat > docs/receipt.latest.json <<'JSON'
           {
-            "receipt_version": "olr/1.2",
-            "claim": "Starter receipt for COLE.",
+            "receipt_version": "olr/1.4L",
+            "claim": "Starter receipt for COLE (lean).",
             "because": ["Self-checking, self-reporting agent receipt."],
             "but": [],
-            "so": "Guards will enrich this with κ (kappa) + Δhol.",
-            "topo": {},
-            "identity": {},
-            "narrative": {},
-            "temporal": {}
+            "so": "Lean guards will enrich this with κ (kappa), Δhol and UCR/ES.",
+            "openline_frame": { "digest": {}, "telem": {} },
+            "status": "green",
+            "temporal": { "latest": {} }
           }
           JSON
           fi
 
-      - name: Seed guard config & baseline (if missing)
+      - name: Seed guard config (1.4L) & input (if missing)
         run: |
-          if [ ! -f docs/guard.config.json ]; then
-            cat > docs/guard.config.json <<'JSON'
-          { "kappa_red": 0.85, "delta_hol_red": 0.35, "max_cycle": 4, "kappa_amber": 0.75, "x_amber": 3 }
-          JSON
-          fi
-          if [ ! -f docs/baseline.json ]; then
-            cat > docs/baseline.json <<'JSON'
-          { "mu_len": 400.0, "var_len": 400.0, "dhol_mu": 0.0, "prev_digest": null }
+          if [ ! -f docs/guard.14l.json ]; then
+            cat > docs/guard.14l.json <<'JSON'
+          { "tau_k": 0.75, "tau_hol": 0.35, "ucr_min": 0.40, "es_min": 0.25 }
           JSON
           fi
           if [ ! -f docs/input.txt ]; then
@@ -105,13 +100,13 @@ jobs:
               u.searchParams.set('v', Date.now().toString());
               const r = await fetch(u,{cache:'no-store'}); if(!r.ok) return;
               const j = await r.json();
-              const t=(j.temporal&&j.temporal.latest)||{}, of=(j.openline_frame||{}), d=(of.digest||{});
-              const k = (j.topo && j.topo.kappa) ?? (of.telem && of.telem.kappa_eff);
-              const h = (of.telem && of.telem.delta_hol) ?? t.delta_hol;
+              const of=(j.openline_frame||{}), d=(of.digest||{}), t=(of.telem||{}), latest=(j.temporal&&j.temporal.latest)||{};
+              const k = (typeof latest.kappa==='number') ? latest.kappa : (t.kappa_eff);
+              const h = (typeof latest.delta_hol==='number') ? latest.delta_hol : (t.delta_hol);
               const S=(val)=> Number.isFinite(+val)?(+val).toFixed(3):'—';
               const E=(id,v)=>{const e=document.getElementById(id); if(e) e.textContent=v;};
               E('kappa', S(k)); E('dhol', S(h)); E('cycles', d.cycle_plus ?? '—'); E('xfront', d.x_frontier ?? '—');
-              const st = document.getElementById('status'); const s=(j.attrs&&j.attrs.status)||'green';
+              const st = document.getElementById('status'); const s=j.status||'green';
               st.textContent = s.toUpperCase();
               st.style.background = s==='red' ? '#7f1d1d' : (s==='amber' ? '#a16207' : '#14532d');
             }catch(e){}
@@ -120,13 +115,13 @@ jobs:
           HTML
           fi
 
-      # -------- run guards -> write receipt
-      - name: Ingest frame → receipt
+      # -------- run lean guards -> write receipt
+      - name: Lean guard (OLR/1.4L)
         run: |
-          if [ -f scripts/ingest_frame.py ]; then
-            python scripts/ingest_frame.py
+          if [ -f scripts/ingest_14L.py ]; then
+            python scripts/ingest_14L.py
           else
-            echo "::error ::scripts/ingest_frame.py missing"; exit 1
+            echo "::error ::scripts/ingest_14L.py missing"; exit 1
           fi
 
       - name: Snapshot receipt to history
@@ -134,13 +129,13 @@ jobs:
           ts=$(date +%s)
           cp docs/receipt.latest.json docs/history/receipt-$ts.json || true
 
-      - name: Commit docs back to repo
+      - name: Commit docs & state back to repo
         run: |
-          git config user.name "github-actions[bot]"
+          git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add -A docs
+          git add -A docs .state
           if ! git diff --cached --quiet; then
-            git commit -m "chore: update receipt & status [skip ci]"
+            git commit -m "chore(1.4L): update receipt & status [skip ci]"
             git push
           else
             echo "No changes to commit"
