@@ -179,4 +179,23 @@ COLE is designed to work on-device or at the edge, with no cloud dependency. Tha
 - **Code:** Permissive open-source (see LICENSE)
 - **Schema & receipt contract:** Frozen minor versions; additions are backward-compatible
 
-**Designed by [Sir Terrynce](https://github.com/terryncew). Released as a gift. Use it wisely.**
+## Cite COLE (Coherence Layer Engine)
+
+If you use COLE in academic or policy work, please cite:
+
+**APA**
+White, T. (2025). *COLE: Coherence Layer Engine (receipt per run with κ and Δhol)*. GitHub. https://github.com/terryncew/COLE-Coherence-Layer-Engine-
+
+**BibTeX**
+@software{White_COLE_2025,
+  author       = {Terrynce White},
+  title        = {COLE: Coherence Layer Engine (receipt per run with \kappa\ and \Delta_{hol})},
+  year         = {2025},
+  url          = {https://github.com/terryncew/COLE-Coherence-Layer-Engine-},
+  publisher    = {GitHub},
+  version      = {olr/1.4L},
+  note         = {Accessed: {{\today}}}
+}
+
+**Plain text**
+White, T. (2025). COLE: Coherence Layer Engine (receipt per run with κ and Δhol). GitHub. https://github.com/terryncew/COLE-Coherence-Layer-Engine-
