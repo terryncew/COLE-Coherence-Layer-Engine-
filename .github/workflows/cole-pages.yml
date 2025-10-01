@@ -16,12 +16,12 @@ concurrency:
 
 jobs:
   build-and-deploy:
-    # avoid looping commits by the bot
-    if: github.actor != 'github-actions[bot]'
+    if: github.actor != 'github-actions[bot]'   # avoid loop on bot commits
     runs-on: ubuntu-latest
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -30,11 +30,6 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-
-      - name: Install deps (light)
-        run: |
-          python -m pip install --upgrade pip
-          python -m pip install pynacl
 
       - name: Ensure folders
         run: |
@@ -47,9 +42,9 @@ jobs:
           {
             "receipt_version": "olr/1.2",
             "claim": "Starter receipt for COLE.",
-            "because": ["We want a self-checking, self-reporting agent receipt."],
+            "because": ["Self-checking, self-reporting agent receipt."],
             "but": [],
-            "so": "Guards will enrich this receipt with identity, temporal rhythm, and continuity checks.",
+            "so": "Guards will enrich this with κ (kappa) + Δhol.",
             "topo": {},
             "identity": {},
             "narrative": {},
@@ -58,56 +53,24 @@ jobs:
           JSON
           fi
 
-      - name: Bootstrap rules & identity (if missing)
+      - name: Seed guard config & baseline (if missing)
         run: |
-          if [ ! -f docs/world_rules.json ]; then
-            cat > docs/world_rules.json <<'JSON'
-          {
-            "timewords": { "morning":[5,12], "afternoon":[12,17], "evening":[17,21], "night":[21,5] },
-            "entities": ["apples","casserole","foil","tinfoil","aluminum foil","door","keys","bag","car","window","coffee","mail","dough","bread","chicken","roast"],
-            "aliases": { "foil":["tinfoil","aluminum foil"], "chicken":["raw chicken"] },
-            "state_changes": [
-              { "entity_pattern":"apples|fruit", "change_pattern":"weather.*|age.*|rot.*|spoil.*",
-                "requires_any": ["heat","humid","humidity","sun","left out","exposed"], "min_hours":24,
-                "hint":"Describe conditions (heat/humidity) and ≥24h with a sensory cue (soft, faint sour smell)." },
-              { "entity_pattern":"apples|fruit", "to_pattern":"casserole|pie|dish",
-                "requires_any":["bake","cook","oven","mix","pan","foil","stir"], "min_minutes":30,
-                "hint":"Include prep, ≥30min cook, + a sensory cue (oven hum, foil crinkle)." }
-            ],
-            "scene_rules": {
-              "require_time_progress_for_state_change_minutes": 5,
-              "max_time_jump_without_marker_minutes": 60,
-              "accepted_time_markers": ["later","after","minutes","hours","sunset","dusk","nightfall","dawn","clock","meanwhile","shortly","while"],
-              "min_sensory_cues_per_scene": 1
-            },
-            "senses_check": ["sight","sound","touch","smell"],
-            "sensory_keywords": {
-              "sight":["light","shadow","color","glow","dim","bright","haze"],
-              "sound":["hiss","clatter","hum","whisper","ding","rustle","sizzle"],
-              "touch":["warm","cold","rough","soft","smooth","heavy","light","humid"],
-              "smell":["scent","aroma","smell","whiff","steam","fragrance","sour"]
-            },
-            "embodied_prompts": [
-              "Describe the lighting or colors.",
-              "What sounds are audible?",
-              "How does the air or an object feel?",
-              "Any smells or aromas present?"
-            ]
-          }
+          if [ ! -f docs/guard.config.json ]; then
+            cat > docs/guard.config.json <<'JSON'
+          { "kappa_red": 0.85, "delta_hol_red": 0.35, "max_cycle": 4, "kappa_amber": 0.75, "x_amber": 3 }
           JSON
           fi
-
-          if [ ! -f docs/identity.profile.json ]; then
-            cat > docs/identity.profile.json <<'JSON'
-          {
-            "persona": "coach-scientist",
-            "goal": "Help the reader make progress with clear, concrete steps.",
-            "style": { "person": "second", "tenor": "warm", "register": "informal",
-                       "sentence_length_mean": 15, "sentence_length_std": 5, "lexical_diversity": 0.70 },
-            "semantic_context": { "core_topics": ["progress","actionable steps","clarity"], "drift_threshold": 0.20 },
-            "novelty": { "min_new_phrasing_rate": 0.25, "history_window": 5 }
-          }
+          if [ ! -f docs/baseline.json ]; then
+            cat > docs/baseline.json <<'JSON'
+          { "mu_len": 400.0, "var_len": 400.0, "dhol_mu": 0.0, "prev_digest": null }
           JSON
+          fi
+          if [ ! -f docs/input.txt ]; then
+            cat > docs/input.txt <<'TXT'
+          Claim: The adapter builds a small reasoning graph.
+          Because we link evidence with markers, structure quality is estimable.
+          Therefore density vs structure is checkable.
+          TXT
           fi
 
       - name: Starter index (if missing)
@@ -115,40 +78,24 @@ jobs:
           if [ ! -f docs/index.html ]; then
             cat > docs/index.html <<'HTML'
           <!doctype html>
-          <meta charset="utf-8">
-          <meta name="viewport" content="width=device-width,initial-scale=1">
+          <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
           <title>COLE status</title>
           <style>
-            :root { --bg:#0b0b0f; --fg:#e8e8f0; --mut:#9aa0aa; --tile:#14161b; --ok:#37d399; --warn:#fbbf24; --bad:#ef4444; }
+            :root { --bg:#0b0b0f; --fg:#e8e8f0; --mut:#9aa0aa; --tile:#14161b }
             body{margin:0;padding:24px;font:16px/1.5 system-ui,-apple-system,Segoe UI,Roboto;background:var(--bg);color:var(--fg)}
-            h1{font-size:20px;margin:0 0 16px 0}
             .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}
             .tile{background:var(--tile);border-radius:10px;padding:14px}
             .muted{color:var(--mut);font-size:12px}
             .small{font-size:14px;margin:6px 0}
+            .tag{display:inline-block;padding:.2em .6em;border-radius:6px;color:#fff}
           </style>
           <h1>COLE · agent health & rhythm</h1>
           <div class="grid">
             <div class="tile">
-              <div class="muted">Topology Health</div>
-              <div class="small">H <b id="H">–</b></div>
-              <div class="small">κ <b id="kappa">–</b> · χ <b id="chi">–</b> · ε <b id="eps">–</b> · R <b id="rigidity">–</b></div>
-            </div>
-            <div class="tile">
-              <div class="muted">Narrative & POV</div>
-              <div class="small">POV drift <b id="pov-drift">–</b> (expect <b id="pov-expect">–</b>)</div>
-              <div class="small">Novelty <b id="nov-rate">–</b> · Loop <b id="loop-risk">–</b></div>
-            </div>
-            <div class="tile">
-              <div class="muted">Temporal Rhythm</div>
-              <div class="small">Strength <b id="rh-str">–</b> · Variety <b id="rh-var">–</b> · PLV <b id="plv">–</b></div>
-              <div class="small">Period (lag) <b id="period">–</b> · Samples <b id="ns">–</b></div>
-            </div>
-            <div class="tile">
-              <div class="muted">Continuity & Reality</div>
-              <div class="small">Time marker <b id="mark">–</b> · Senses <b id="senses">–</b></div>
-              <div class="small">Entities <b id="ents">–</b></div>
-              <div class="small">Issues <b id="issues">0</b> · Notes <b id="notes">0</b></div>
+              <div class="muted">Coherence Signals</div>
+              <div class="small">κ <b id="kappa">—</b> · Δhol <b id="dhol">—</b></div>
+              <div class="small">cycles <b id="cycles">—</b> · X <b id="xfront">—</b></div>
+              <div class="small">status <b id="status" class="tag">—</b></div>
             </div>
           </div>
           <script>
@@ -156,72 +103,31 @@ jobs:
             try{
               const u = new URL('./receipt.latest.json', location.href);
               u.searchParams.set('v', Date.now().toString());
-              const r = await fetch(u, {cache:'no-store'}); if(!r.ok) return;
+              const r = await fetch(u,{cache:'no-store'}); if(!r.ok) return;
               const j = await r.json();
-              const topo = j.topo || {};
-              const id = j.identity || {}; const pov=id.pov||{}, nov=id.novelty||{};
-              const tmp = j.temporal || {}; const nf=tmp.natural_frequency||{}, rh=tmp.rhythm||{};
-              const cont=(j.narrative&&j.narrative.continuity)||{};
-              const pct = x => Number.isFinite(+x)?(+(x)*100).toFixed(0)+'%':'–';
-              const num = x => Number.isFinite(+x)?(+x).toFixed(2):'–';
-              document.getElementById('H').textContent = num(topo.H);
-              ['kappa','chi','eps','rigidity'].forEach(k=>{document.getElementById(k).textContent=num(topo[k])});
-              document.getElementById('pov-drift').textContent = pct(pov.drift);
-              document.getElementById('pov-expect').textContent = pov.expected_person||'–';
-              document.getElementById('nov-rate').textContent = pct(nov.new_phrasing_rate);
-              document.getElementById('loop-risk').textContent = (Number(nov.loop_risk)>=1?'high':'low');
-              document.getElementById('rh-str').textContent = num(rh.strength);
-              document.getElementById('rh-var').textContent = num(rh.variety);
-              document.getElementById('plv').textContent = num(rh.plv);
-              document.getElementById('period').textContent = rh.period_lag ?? '–';
-              document.getElementById('ns').textContent = nf.n_samples ?? '–';
-              document.getElementById('mark').textContent = cont.has_time_marker===true?'yes':(cont.has_time_marker===false?'no':'—');
-              document.getElementById('senses').textContent = (cont.senses_detected||[]).join(', ')||'—';
-              document.getElementById('ents').textContent = (cont.entities_now||[]).join(', ')||'—';
-              document.getElementById('issues').textContent = (cont.issues||[]).length;
-              document.getElementById('notes').textContent = (cont.notes||[]).length;
+              const t=(j.temporal&&j.temporal.latest)||{}, of=(j.openline_frame||{}), d=(of.digest||{});
+              const k = (j.topo && j.topo.kappa) ?? (of.telem && of.telem.kappa_eff);
+              const h = (of.telem && of.telem.delta_hol) ?? t.delta_hol;
+              const S=(val)=> Number.isFinite(+val)?(+val).toFixed(3):'—';
+              const E=(id,v)=>{const e=document.getElementById(id); if(e) e.textContent=v;};
+              E('kappa', S(k)); E('dhol', S(h)); E('cycles', d.cycle_plus ?? '—'); E('xfront', d.x_frontier ?? '—');
+              const st = document.getElementById('status'); const s=(j.attrs&&j.attrs.status)||'green';
+              st.textContent = s.toUpperCase();
+              st.style.background = s==='red' ? '#7f1d1d' : (s==='amber' ? '#a16207' : '#14532d');
             }catch(e){}
           })();
           </script>
           HTML
           fi
 
-      # ---------------------------
-      # Optional enrich steps (run only if files exist)
-      # ---------------------------
-
-      - name: Helper runner
-        id: helper
-        shell: bash
+      # -------- run guards -> write receipt
+      - name: Ingest frame → receipt
         run: |
-          run_if() { test -f "$1" && echo "[run] $1" && python "$1" || echo "[skip] $1"; }
-          echo "def=run_if" >> $GITHUB_OUTPUT
-
-      - name: Ingest OpenLine frame → receipt (if scripts/ingest_frame.py)
-        run: |
-          if [ -f scripts/ingest_frame.py ]; then python scripts/ingest_frame.py || true; else echo "[skip] ingest_frame.py"; fi
-
-      - name: Training evolution → receipt (v1.2)
-        env:
-          SEED: ${{ vars.SEED || 'unknown' }}
-          TRAIN_LOG_DIR: ${{ vars.TRAIN_LOG_DIR || 'logs/train' }}
-          EVAL_LOG: ${{ vars.EVAL_LOG || 'logs/eval/results.jsonl' }}
-          HP_SCHEDULE_JSON: ${{ vars.HP_SCHEDULE_JSON || 'logs/hparams.json' }}
-        run: |
-          if [ -f scripts/training_evolution_logger.py ]; then python scripts/training_evolution_logger.py || true; else echo "[skip] training_evolution_logger.py"; fi
-
-      - name: Frontier Watch (optional)
-        env:
-          APPLY_FRONTIER_NUDGES: "0"   # flip to "1" if you want tiny κ/ε/R nudges
-        run: |
-          if [ -f scripts/ingest_frontier_watch.py ]; then python scripts/ingest_frontier_watch.py || true; else echo "[skip] ingest_frontier_watch.py"; fi
-          if [ -f scripts/apply_frontier_nudges.py ]; then python scripts/apply_frontier_nudges.py || true; else echo "[skip] apply_frontier_nudges.py"; fi
-
-      - name: Run guards (if present)
-        run: |
-          for s in rhythm_metrics.py pov_rhythm_guard.py continuity_guard.py neuro_braincheck.py audience_tracker.py apply_topo_hooks.py; do
-            if [ -f "scripts/$s" ]; then echo "[run] $s"; python "scripts/$s" || true; else echo "[skip] $s"; fi
-          done
+          if [ -f scripts/ingest_frame.py ]; then
+            python scripts/ingest_frame.py
+          else
+            echo "::error ::scripts/ingest_frame.py missing"; exit 1
+          fi
 
       - name: Snapshot receipt to history
         run: |
@@ -234,7 +140,7 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add -A docs
           if ! git diff --cached --quiet; then
-            git commit -m "chore: update docs/ status & receipt [skip ci]"
+            git commit -m "chore: update receipt & status [skip ci]"
             git push
           else
             echo "No changes to commit"
@@ -242,10 +148,20 @@ jobs:
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
+
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
           path: docs
+
       - name: Deploy to Pages
         id: deployment
         uses: actions/deploy-pages@v4
+
+      - name: CI Guard Harness (one-line verdict)
+        run: |
+          if [ -f scripts/ci_guard_harness.py ]; then
+            python scripts/ci_guard_harness.py || true
+          else
+            echo "[skip] ci_guard_harness.py"
+          fi
