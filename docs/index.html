@@ -1,181 +1,223 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
+<meta charset="utf-8" />
 <title>COLE · OpenLine Receipt (OLR/1.4L)</title>
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+
 <style>
   :root{
-    --bg:#fafafa; --card:#ffffff; --ink:#0b0b0f; --muted:#6a6a6a; --line:#eaeaea;
-    --ok:#16a34a; --warn:#f59e0b; --bad:#dc2626; --chip:#f4f4f5;
+    --bg:#0b0b0f; --card:#13151b; --ink:#e7e8ee; --muted:#9aa0aa; --line:#222534;
+    --ok:#16a34a; --warn:#f59e0b; --bad:#dc2626; --chip:#1c2130; --chipline:#2a2f40;
+  }
+  @media (prefers-color-scheme: light){
+    :root{ --bg:#fafafa; --card:#ffffff; --ink:#0b0b10; --muted:#6a6f7a; --line:#e9ecf2; --chip:#f4f6fb; --chipline:#e6eaf3; }
   }
   *{box-sizing:border-box}
-  html,body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 -apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Inter,Helvetica,Arial,sans-serif}
-  .wrap{max-width:980px;margin:0 auto;padding:22px}
-  h1{font-size:22px;margin:0 0 6px 0}
-  .sub{color:var(--muted);font-size:13px;margin:0 0 14px 0}
-  .grid{display:grid;grid-template-columns:repeat(6,1fr);gap:10px}
-  @media (max-width:900px){.grid{grid-template-columns:repeat(3,1fr)}}
-  @media (max-width:560px){.grid{grid-template-columns:repeat(2,1fr)}}
-  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px}
-  .kpi{display:flex;align-items:center;gap:10px}
-  .lamp{width:12px;height:12px;border-radius:50%}
-  .ok{background:var(--ok)} .warn{background:var(--warn)} .bad{background:var(--bad)} .mutelamp{background:#c7c7cc}
-  .big{font-size:20px;font-weight:700}
-  .muted{color:var(--muted);font-size:12px}
-  .row{display:flex;gap:10px;flex-wrap:wrap;margin:12px 0 0}
-  .btn{background:#111827;color:#fff;border:1px solid #111827;padding:9px 12px;border-radius:10px;text-decoration:none;font-weight:600}
+  html,body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 -apple-system,system-ui,Segoe UI,Roboto,Inter,Helvetica,Arial,sans-serif}
+  .wrap{max-width:980px;margin:0 auto;padding:18px}
+  header{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:8px}
+  h1{font-size:20px;margin:0}
+  .sub{font-size:12px;color:var(--muted);margin:2px 0 0}
+
+  .grid{display:grid;grid-template-columns: 1fr; gap:12px}
+  @media (min-width:860px){ .grid{grid-template-columns: 1.1fr .9fr} }
+
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px}
+
+  .pill{display:inline-flex;align-items:center;gap:8px;padding:6px 10px;border-radius:999px;border:1px solid var(--line);background:var(--chip);font-weight:600}
+  .dot{width:10px;height:10px;border-radius:50%}
+  .okd{background:var(--ok)} .warnd{background:var(--warn)} .badd{background:var(--bad)}
+
+  .row{display:flex;gap:8px;flex-wrap:wrap}
+  .btn{display:inline-block;background:#0e1726;color:#fff;text-decoration:none;border:1px solid var(--line);padding:10px 12px;border-radius:10px;font-weight:700}
+  @media (prefers-color-scheme: light){ .btn{background:#0b0b10;color:#fff} }
   .btn:active{transform:translateY(1px)}
-  .tag{display:inline-block;padding:.25em .6em;border-radius:999px;color:#fff;font-size:12px}
-  .tag.green{background:var(--ok)} .tag.amber{background:var(--warn)} .tag.red{background:var(--bad)}
-  pre{white-space:pre-wrap;background:#fbfbfc;border:1px solid var(--line);border-radius:10px;padding:10px;overflow:auto}
-  .kv{display:grid;grid-template-columns:auto 1fr;gap:6px 10px;align-items:center}
-  .chip{display:inline-block;background:var(--chip);border:1px solid var(--line);border-radius:999px;padding:.25em .6em;font-size:12px}
-  .divider{height:1px;background:var(--line);margin:10px 0}
+
+  .chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+  .chip{background:var(--chip);border:1px solid var(--chipline);border-radius:999px;padding:.25em .6em;font-size:12px}
+
+  .bar{width:100%;height:10px;border-radius:999px;background:linear-gradient(90deg,#0f172a, #1f2937);border:1px solid var(--line);position:relative;overflow:hidden}
+  .bar .fill{position:absolute;left:0;top:0;bottom:0;background:currentColor;opacity:.8}
+  .bar .tick{position:absolute;top:-2px;bottom:-2px;width:2px;background:var(--line)}
+  .barrow{display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:center}
+
+  /* Glyph container */
+  .glyphTitle{font-size:12px;color:var(--muted);margin:0 0 6px}
+  .svgbox{width:100%;aspect-ratio:1/1;display:block}
+  .legend{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;font-size:12px;color:var(--muted)}
 </style>
 </head>
 <body>
 <div class="wrap">
-  <h1>COLE · OpenLine Receipt</h1>
-  <div class="sub">Lean 1.4L · “Receipts, not rhetoric.” This reads <code>docs/receipt.latest.json</code> and <code>docs/guard.14l.json</code>.</div>
-
-  <div class="grid" id="grid">
-    <!-- KPI tiles injected by JS -->
-  </div>
-
-  <div class="row">
-    <a class="btn" href="./receipt.latest.json" download>Download receipt</a>
-    <a class="btn" href="./history/" id="histLink">History</a>
-  </div>
-
-  <div class="card" style="margin-top:12px">
-    <div class="kv">
-      <div class="muted">Updated</div><div id="updated">—</div>
-      <div class="muted">Status</div><div id="status"><span class="tag">—</span></div>
-      <div class="muted">Why</div><div id="why">—</div>
-      <div class="muted">Try next</div><div id="fix">—</div>
+  <header>
+    <div>
+      <h1>COLE · OpenLine Receipt</h1>
+      <p class="sub">Lean 1.4L · “Receipts, not rhetoric.” Shape-first view rendered from <code>docs/receipt.latest.json</code>.</p>
     </div>
-    <div class="divider"></div>
-    <div class="muted" id="rules">Rules: RED if cycle⁺>0, or (Δhol≥τ_hol & del_suspect), or (κ≥τ_k & UCR≥ucr_min & ES<es_min). AMBER if any one is high.</div>
-  </div>
+    <div class="pill" id="statusPill" hidden>
+      <span class="dot" id="statusDot"></span><span id="statusText">status</span>
+    </div>
+  </header>
 
-  <div class="card" style="margin-top:12px">
-    <div class="muted">Frame digest</div>
-    <pre id="digest">Loading…</pre>
-  </div>
+  <div class="grid">
+    <!-- Left: big glyph -->
+    <section class="card">
+      <div class="glyphTitle">Coherence glyph (bigger = higher risk)</div>
+      <svg class="svgbox" viewBox="0 0 120 120" role="img" aria-label="coherence glyph" id="glyph"></svg>
+      <div class="legend" id="legend"></div>
+    </section>
 
-  <div class="card" style="margin-top:12px">
-    <div class="muted">Raw telemetry</div>
-    <pre id="telem">Loading…</pre>
+    <!-- Right: bars + actions -->
+    <section class="card">
+      <div class="glyphTitle">Signals at a glance</div>
+
+      <div class="barrow" style="margin-top:2px">
+        <div style="width:52px;color:var(--muted)">κ</div>
+        <div class="bar" id="barK"><div class="fill"></div><div class="tick" id="barKTick"></div></div>
+        <div id="barKVal" style="width:56px;text-align:right">—</div>
+      </div>
+      <div class="barrow" style="margin-top:6px">
+        <div style="width:52px;color:var(--muted)">Δhol</div>
+        <div class="bar" id="barD"><div class="fill"></div><div class="tick" id="barDTick"></div></div>
+        <div id="barDVal" style="width:56px;text-align:right">—</div>
+      </div>
+
+      <div class="chips" id="chips"></div>
+
+      <div class="row" style="margin-top:10px">
+        <a class="btn" href="./receipt.latest.json" download>Download receipt</a>
+        <a class="btn" href="./history/">History</a>
+      </div>
+
+      <p class="sub" id="updated" style="margin-top:10px">—</p>
+    </section>
   </div>
 </div>
 
 <script>
 (async function(){
-  const $ = (id)=>document.getElementById(id);
-  const grid = $('grid');
+  // helpers
+  const $ = id => document.getElementById(id);
+  const pill=$('statusPill'), dot=$('statusDot'), txt=$('statusText');
+  const glyph=$('glyph'), leg=$('legend'), chips=$('chips');
+  const barK=$('barK'), barD=$('barD'), barKTick=$('barKTick'), barDTick=$('barDTick');
+  const barKVal=$('barKVal'), barDVal=$('barDVal');
 
-  const cfgDefault = { tau_k:0.75, tau_hol:0.35, ucr_min:0.40, es_min:0.25 };
-  let cfg = cfgDefault;
-
-  try{
-    const cr = await fetch('./guard.14l.json?ts='+Date.now());
-    if(cr.ok){ cfg = {...cfgDefault, ...(await cr.json())}; }
-  }catch{}
-
-  function lamp(cls){ const d=document.createElement('div'); d.className='lamp '+cls; return d; }
-  function tile(label, value, hint, cls){
-    const c=document.createElement('div'); c.className='card';
-    const row=document.createElement('div'); row.className='kpi';
-    row.appendChild(lamp(cls||'mutelamp'));
-    const b=document.createElement('div'); b.className='big'; b.textContent=value;
-    row.appendChild(b);
-    const cap=document.createElement('div');
-    cap.innerHTML = `<div class="muted">${label}</div><div class="muted" style="font-size:11px">${hint||''}</div>`;
-    c.appendChild(row); c.appendChild(cap); return c;
+  // fetch JSON (with cache-bust)
+  async function jget(path){
+    try{ const u=new URL(path,location.href); u.searchParams.set('v',Date.now()); 
+         const r=await fetch(u,{cache:'no-store'}); return r.ok? r.json(): null; }catch{return null;}
   }
-  const cK = k => (k>=0.85?'bad':(k>=0.70?'warn':'ok'));
-  const cD = d => (d>=cfg.tau_hol?'warn':'ok');
-
-  let rec = null;
-  try{
-    const r = await fetch('./receipt.latest.json?ts='+Date.now());
-    rec = await r.json();
-  }catch(e){}
+  const rec = await jget('./receipt.latest.json');
+  const cfg = await jget('./guard.14l.json') || {tau_k:.75,tau_hol:.35,ucr_min:.4,es_min:.25};
   if(!rec){
-    grid.appendChild(tile('No receipt found', '—', 'Run your Pages workflow', 'warn'));
-    $('digest').textContent = 'Missing docs/receipt.latest.json';
-    $('telem').textContent = '—';
+    txt.textContent='missing receipt'; pill.hidden=false;
     return;
   }
 
-  // grab fields (lean 1.4L)
-  const frame = rec.openline_frame || {};
-  const digest = frame.digest || {};
-  const telem  = frame.telem || {};
-  const latest = (rec.temporal && rec.temporal.latest) || {};
+  const of=rec.openline_frame||{}, t=of.telem||{}, d=of.digest||{}, latest=(rec.temporal&&rec.temporal.latest)||{};
+  const k  = Number.isFinite(+t.kappa_eff)? +t.kappa_eff : (Number.isFinite(+latest.kappa)? +latest.kappa : 0);
+  const dh = Number.isFinite(+t.delta_hol)? +t.delta_hol : (Number.isFinite(+latest.delta_hol)? +latest.delta_hol : 0);
+  const ucr = Number.isFinite(+d.ucr)? +d.ucr : 0;
+  const es  = Number.isFinite(+t.evidence_strength)? +t.evidence_strength : 0;
+  const cyc = Number.isFinite(+d.cycle_plus)? +d.cycle_plus : 0;
+  const X   = Number.isFinite(+d.x_frontier)? +d.x_frontier : 0;
 
-  const k = Number.isFinite(latest.kappa) ? latest.kappa : (telem.kappa_eff ?? NaN);
-  const dhol = Number.isFinite(latest.delta_hol) ? latest.delta_hol : (telem.delta_hol ?? NaN);
-  const ucr = digest.ucr ?? NaN;
-  const es  = telem.evidence_strength ?? NaN;
-  const cycles = digest.cycle_plus ?? 0;
-  const xfront = digest.x_frontier ?? 0;
-  const depth = digest.depth ?? 0;
-  const soc = digest.s_over_c ?? NaN;
-  const delSus = !!telem.del_suspect;
-  const tokens = telem.cost_tokens ?? NaN;
-
-  // compute status if missing
+  // status from policy (same as guard)
   function computeStatus(){
-    if (cycles>0) return 'red';
-    const red = ( (dhol>=cfg.tau_hol && delSus) ||
+    if (cyc>0) return 'red';
+    const red = ( (dh>=cfg.tau_hol && (t.del_suspect===true)) ||
                   (k>=cfg.tau_k && ucr>=cfg.ucr_min && es<cfg.es_min) );
     if (red) return 'red';
-    const amber = (k>=cfg.tau_k) || (dhol>=cfg.tau_hol) || (ucr>=cfg.ucr_min);
+    const amber = (k>=cfg.tau_k) || (dh>=cfg.tau_hol) || (ucr>=cfg.ucr_min);
     return amber ? 'amber' : 'green';
   }
   const status = (rec.status || '').toLowerCase() || computeStatus();
+  const color = s => s==='red' ? '#dc2626' : (s==='amber' ? '#f59e0b' : '#16a34a');
 
-  // KPIs
-  grid.appendChild(tile('κ (stress)', isFinite(k)? k.toFixed(3):'—', 'Density vs structure', cK(k)));
-  grid.appendChild(tile('Δhol (drift)', isFinite(dhol)? dhol.toFixed(3):'—', 'Path mismatch (EWMA JSD)', cD(dhol)));
-  grid.appendChild(tile('UCR', isFinite(ucr)? (ucr*100).toFixed(0)+'%':'—', 'Unsupported-claim ratio', (ucr>=cfg.ucr_min?'warn':'ok')));
-  grid.appendChild(tile('ES', isFinite(es)? (es*100).toFixed(0)+'%':'—', 'Evidence strength', (es<cfg.es_min?'warn':'ok')));
-  grid.appendChild(tile('Cycles', String(cycles), 'cycle⁺ > 0 → RED', (cycles>0?'bad':'ok')));
-  grid.appendChild(tile('X (contradictions)', String(xfront), 'Unresolved contradictions', (xfront>0?'warn':'ok')));
+  // status pill
+  dot.className = 'dot ' + (status==='red'?'badd':(status==='amber'?'warnd':'okd'));
+  txt.textContent = status.toUpperCase();
+  pill.hidden=false;
 
-  // status strip
-  const sTag = document.createElement('span');
-  sTag.className = 'tag '+status;
-  sTag.textContent = status.toUpperCase();
-  $('status').replaceChildren(sTag);
-  $('updated').textContent = new Date((frame.t_logical||Date.now())*1000).toLocaleString();
+  // ---------- Coherence Glyph (6 axes) ----------
+  const axes = [
+    {id:'kappa', label:'κ',     val: Math.max(0, Math.min(1, k/(cfg.tau_k||.75)))},
+    {id:'dhol',  label:'Δhol',  val: Math.max(0, Math.min(1, dh/(cfg.tau_hol||.35)))},
+    {id:'ucr',   label:'UCR',   val: Math.max(0, Math.min(1, ucr/(cfg.ucr_min||.4)))},
+    {id:'lowes', label:'low ES',val: Math.max(0, Math.min(1, (cfg.es_min - es)/(cfg.es_min||.25)))},
+    {id:'cycles',label:'cycles',val: cyc>0 ? 1 : 0},
+    {id:'X',     label:'X',     val: Math.max(0, Math.min(1, X/3))}
+  ];
+  const cx=60, cy=60, R=48, N=axes.length;
 
-  // why & fix
-  let why='—', fix='—';
-  if (cycles>0){ why='Circular reasoning detected (cycle⁺>0)'; fix='Break the loop; add external evidence or restructure claims.'; }
-  else if (dhol>=cfg.tau_hol && delSus){ why='Path drift with potential silent deletion'; fix='Add a resolution/handling sentence for removed contradictions.'; }
-  else if (k>=cfg.tau_k && ucr>=cfg.ucr_min && es<cfg.es_min){ why='High stress + unsupported claims + weak evidence'; fix='Add citations or “according to…” lines near claims.'; }
-  else if (k>=cfg.tau_k){ why='Elevated stress (κ high)'; fix='Shorten or add structure/support so S* rises.'; }
-  else if (dhol>=cfg.tau_hol){ why='Path drift (Δhol high)'; fix='Stabilize reasoning across turns; avoid rewriting without resolution.'; }
-  else if (ucr>=cfg.ucr_min){ why='Many claims lack nearby support'; fix='Place an evidence sentence or citation within ±1 sentence.'; }
-
-  $('why').textContent = why;
-  $('fix').textContent = fix;
-
-  // rules text with thresholds
-  $('rules').textContent =
-    `Rules: RED if cycle⁺>0, or (Δhol≥${cfg.tau_hol} & del_suspect), or (κ≥${cfg.tau_k} & UCR≥${cfg.ucr_min} & ES<${cfg.es_min}). AMBER if any one is high.`;
-
-  // raw blocks
-  $('digest').textContent = JSON.stringify(digest, null, 2);
-  $('telem').textContent  = JSON.stringify(telem,  null, 2);
-
-  // small extras
-  if (!isFinite(soc) && xfront===0) {
-    // keep the tile tidy; not critical to show s/c if X=0
+  // rings & axes
+  for(let r=1;r<=3;r++){
+    const rr=(R/3)*r;
+    const circ=document.createElementNS('http://www.w3.org/2000/svg','circle');
+    circ.setAttribute('cx',cx); circ.setAttribute('cy',cy); circ.setAttribute('r',rr);
+    circ.setAttribute('fill','none'); circ.setAttribute('stroke','#2a2f40'); circ.setAttribute('stroke-width','0.9');
+    glyph.appendChild(circ);
   }
+  axes.forEach((ax,i)=>{
+    const a = -Math.PI/2 + i*(2*Math.PI/N);
+    const x = cx + R*Math.cos(a), y = cy + R*Math.sin(a);
+    const line=document.createElementNS('http://www.w3.org/2000/svg','line');
+    line.setAttribute('x1',cx); line.setAttribute('y1',cy); line.setAttribute('x2',x); line.setAttribute('y2',y);
+    line.setAttribute('stroke','#2a2f40'); line.setAttribute('stroke-width','0.9');
+    glyph.appendChild(line);
+    const lx=cx+(R+10)*Math.cos(a), ly=cy+(R+10)*Math.sin(a);
+    const lbl=document.createElementNS('http://www.w3.org/2000/svg','text');
+    lbl.setAttribute('x',lx); lbl.setAttribute('y',ly);
+    lbl.setAttribute('font-size','9'); lbl.setAttribute('fill','#9aa0aa');
+    lbl.setAttribute('text-anchor', Math.cos(a)>0.35?'start':(Math.cos(a)<-0.35?'end':'middle'));
+    lbl.setAttribute('dominant-baseline','middle');
+    lbl.textContent=ax.label; glyph.appendChild(lbl);
+  });
+
+  function point(i,v){
+    const a = -Math.PI/2 + i*(2*Math.PI/N);
+    const r = 6 + (R-6)*v; // keep a small hub
+    return [cx + r*Math.cos(a), cy + r*Math.sin(a)];
+  }
+  const pts = axes.map((ax,i)=>point(i,ax.val));
+  const dpath = 'M'+pts.map(p=>p[0].toFixed(2)+','+p[1].toFixed(2)).join('L')+'Z';
+  const poly=document.createElementNS('http://www.w3.org/2000/svg','path');
+  poly.setAttribute('d', dpath);
+  poly.setAttribute('fill', status==='red'?'#fecaca':(status==='amber'?'#fde68a':'#bbf7d0'));
+  poly.setAttribute('fill-opacity','.55');
+  poly.setAttribute('stroke', color(status));
+  poly.setAttribute('stroke-width','1.6');
+  glyph.appendChild(poly);
+  const center=document.createElementNS('http://www.w3.org/2000/svg','circle');
+  center.setAttribute('cx',cx); center.setAttribute('cy',cy); center.setAttribute('r',2.1);
+  center.setAttribute('fill', color(status)); glyph.appendChild(center);
+
+  // legend chips with real values
+  function num(x, n=3){ return Number.isFinite(+x) ? (+x).toFixed(n) : '—'; }
+  const parts = [
+    `κ ${num(k)}`, `Δhol ${num(dh)}`, `UCR ${(ucr*100).toFixed(0)}%`,
+    `ES ${(es*100).toFixed(0)}%`, `cycles ${cyc}`, `X ${X}`
+  ];
+  parts.forEach(s=>{ const c=document.createElement('span'); c.className='chip'; c.textContent=s; leg.appendChild(c); });
+
+  // ---------- Bars ----------
+  function setBar(bar, tick, value, thresh){
+    const w = bar.clientWidth||240;
+    const pct = Math.max(0, Math.min(1, value / (Math.max(thresh, 1e-9))));
+    bar.style.color = color(status);
+    bar.querySelector('.fill').style.width = (pct*100).toFixed(1)+'%';
+    tick.style.left = ((Math.min(thresh,1)/Math.max(thresh,1))*100).toFixed(1)+'%';
+  }
+  setBar(barK, barKTick, k, cfg.tau_k||.75);
+  setBar(barD, barDTick, dh, cfg.tau_hol||.35);
+  barKVal.textContent = num(k);
+  barDVal.textContent = num(dh);
+
+  // updated time
+  const tlog = (of.t_logical? of.t_logical*1000 : Date.now());
+  document.getElementById('updated').textContent = 'Updated · ' + new Date(tlog).toLocaleString();
 })();
 </script>
 </body>
