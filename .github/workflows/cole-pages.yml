@@ -1,9 +1,13 @@
-name: COLE Pages (guards + status)
+name: COLE Pages — Lean 1.4L (guards + status)
 
 on:
-  push:
-    branches: [ "main" ]
   workflow_dispatch:
+  push:
+    branches: ["main"]
+    paths:
+      - "scripts/ingest_14L.py"
+      - "docs/**"
+      - ".github/workflows/cole-pages-lean-14l.yml"
 
 permissions:
   contents: write
@@ -11,12 +15,12 @@ permissions:
   id-token: write
 
 concurrency:
-  group: pages
+  group: pages-lean-14l
   cancel-in-progress: false
 
 jobs:
   build-and-deploy:
-    if: github.actor != 'github-actions[bot]'   # avoid loop on bot commits
+    if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     environment:
       name: github-pages
@@ -74,7 +78,7 @@ jobs:
             cat > docs/index.html <<'HTML'
           <!doctype html>
           <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-          <title>COLE status</title>
+          <title>COLE · OpenLine Receipt (Lean 1.4L)</title>
           <style>
             :root { --bg:#0b0b0f; --fg:#e8e8f0; --mut:#9aa0aa; --tile:#14161b }
             body{margin:0;padding:24px;font:16px/1.5 system-ui,-apple-system,Segoe UI,Roboto;background:var(--bg);color:var(--fg)}
@@ -84,11 +88,12 @@ jobs:
             .small{font-size:14px;margin:6px 0}
             .tag{display:inline-block;padding:.2em .6em;border-radius:6px;color:#fff}
           </style>
-          <h1>COLE · agent health & rhythm</h1>
+          <h1>COLE · OpenLine Receipt (Lean 1.4L)</h1>
           <div class="grid">
             <div class="tile">
               <div class="muted">Coherence Signals</div>
               <div class="small">κ <b id="kappa">—</b> · Δhol <b id="dhol">—</b></div>
+              <div class="small">UCR <b id="ucr">—</b> · ES <b id="es">—</b></div>
               <div class="small">cycles <b id="cycles">—</b> · X <b id="xfront">—</b></div>
               <div class="small">status <b id="status" class="tag">—</b></div>
             </div>
@@ -101,11 +106,12 @@ jobs:
               const r = await fetch(u,{cache:'no-store'}); if(!r.ok) return;
               const j = await r.json();
               const of=(j.openline_frame||{}), d=(of.digest||{}), t=(of.telem||{}), latest=(j.temporal&&j.temporal.latest)||{};
-              const k = (typeof latest.kappa==='number') ? latest.kappa : (t.kappa_eff);
-              const h = (typeof latest.delta_hol==='number') ? latest.delta_hol : (t.delta_hol);
-              const S=(val)=> Number.isFinite(+val)?(+val).toFixed(3):'—';
+              const k = (typeof latest.kappa==='number') ? latest.kappa : t.kappa_eff;
+              const h = (typeof latest.delta_hol==='number') ? latest.delta_hol : t.delta_hol;
+              const S=v=>Number.isFinite(+v)?(+v).toFixed(3):'—';
               const E=(id,v)=>{const e=document.getElementById(id); if(e) e.textContent=v;};
               E('kappa', S(k)); E('dhol', S(h)); E('cycles', d.cycle_plus ?? '—'); E('xfront', d.x_frontier ?? '—');
+              E('ucr', S(d.ucr)); E('es', S(t.evidence_strength));
               const st = document.getElementById('status'); const s=j.status||'green';
               st.textContent = s.toUpperCase();
               st.style.background = s==='red' ? '#7f1d1d' : (s==='amber' ? '#a16207' : '#14532d');
