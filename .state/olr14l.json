@@ -1,0 +1,15 @@
+{
+  "mu_len": 324.8,
+  "var_len": 18416.128000000004,
+  "prev_digest": {
+    "b0": 1,
+    "cycle_plus": 0,
+    "x_frontier": 0,
+    "s_over_c": 2.0,
+    "depth": 3,
+    "ucr": 0.0
+  },
+  "dhol_mu": 0.005637012594767546,
+  "prev_xf": 0,
+  "prev_ucr": 0.0
+}
