@@ -1,0 +1,24 @@
+{"id":"g1","label":"good","text":"We tested three designs. Because the second showed lower variance, we recommend it. Therefore deployment proceeds next week."}
+{"id":"g2","label":"good","text":"The dataset is small. However we augment with public corpora. Therefore the effective sample size improves and variance drops."}
+{"id":"g3","label":"good","text":"Claim: The tool emits a receipt per run. Because it runs in CI, adoption needs no extra infra. Thus rollout time is short."}
+{"id":"g4","label":"good","text":"The system measured κ below 0.7 across trials. Therefore stress stayed manageable and no guard fired."}
+{"id":"g5","label":"good","text":"Assume a small shift in inputs. Because monitoring is in place, we can catch anomalies. Therefore recovery is fast."}
+{"id":"b1","label":"bad_circular","text":"GPT-5 will be AGI soon. Because GPT-5 is near, evidence suggests AGI is near. Therefore GPT-5 will be AGI soon."}
+{"id":"b2","label":"bad","text":"The experiment proves aspirin cures all cancers. Therefore cancer is solved."}
+{"id":"b3","label":"bad_circular","text":"We know the claim is true. Because it is true, our evidence confirms the claim. Therefore the claim is true."}
+{"id":"b4","label":"bad","text":"The bridge collapsed upward due to negative gravity. Therefore safety is excellent."}
+{"id":"b5","label":"bad","text":"We removed the only contradictory report. Therefore consensus is perfect."}
+{"id":"b6","label":"bad","text":"Although the sensor failed, accuracy increased to 110%. Therefore calibration is unnecessary."}
+{"id":"b7","label":"bad_circular","text":"This method works because this method works. Therefore it works."}
+{"id":"b8","label":"bad","text":"The dataset contains 12 examples. Therefore statistical certainty is absolute."}
+{"id":"b9","label":"bad","text":"However all counterexamples were deleted. Therefore reliability is flawless."}
+{"id":"d1_prev","label":"context_prev","text":"Claim: two studies disagree. However a strong objection remains unresolved. Therefore we plan follow-up."}
+{"id":"d1","label":"bad_deletion","text":"Claim: consensus achieved. Therefore no objections remain."}
+{"id":"d2_prev","label":"context_prev","text":"We list three risks. However one risk is critical. Therefore we postpone launch."}
+{"id":"d2","label":"bad_deletion","text":"Everything is green. Therefore launch proceeds today."}
+{"id":"g6","label":"good","text":"We re-ran the ablation. Because the prior drop was a bug, accuracy returned to baseline. Therefore status is green."}
+{"id":"g7","label":"good","text":"We compared with a baseline. However the new model is slower. Therefore we keep the old one."}
+{"id":"b10","label":"bad","text":"Because our clocks moved faster than light, the timestamp proves time travel. Therefore causality is broken."}
+{"id":"b11","label":"bad","text":"Assume the loss is zero. Therefore all predictions are exact."}
+{"id":"g8","label":"good","text":"Because the checksum matches, integrity holds. Therefore the artifact is unchanged."}
+{"id":"g9","label":"good","text":"However the variance increased, so we add smoothing. Therefore alerts stop flapping."}
