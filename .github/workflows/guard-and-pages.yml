@@ -1,22 +1,9 @@
-name: COLE Pages (text+vision guard)
+name: COLE Pages (guards + status)
 
 on:
-  workflow_dispatch:
-    inputs:
-      prompt:
-        description: "Prompt (used if ANTHROPIC_API_KEY set or fallback)"
-        type: string
-        default: "Direct technical assessment of the attached visuals; cite sources."
-      image_urls:
-        description: "Comma-separated image URLs (optional)"
-        type: string
-        default: ""
   push:
     branches: [ "main" ]
-    paths:
-      - "scripts/claude_harness.py"
-      - "docs/index.html"
-      - ".github/workflows/guard-and-pages.yml"
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -29,10 +16,18 @@ concurrency:
 
 jobs:
   build-and-deploy:
+    # avoid looping commits by the bot
+    if: ${{ github.actor != 'github-actions[bot]' }}
     runs-on: ubuntu-latest
+
+    # ✅ give Pages a real environment (required by deploy-pages@v4)
     environment:
       name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+      url: ${{ steps.deploy.outputs.page_url }}
+
+    # ✅ expose (possibly-empty) key only as ENV; never use secrets.* in if:
+    env:
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
 
     steps:
       - name: Checkout
@@ -41,50 +36,162 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: '3.11'
 
-      - name: Install anthropic (only if key present)
-        if: ${{ secrets.ANTHROPIC_API_KEY != '' }}
-        run: python -m pip install --upgrade pip && pip install anthropic
+      - name: Ensure folders
+        run: |
+          mkdir -p docs/history docs/style_history docs/memory schema scripts artifacts logs/train logs/eval
 
-      - name: Run harness (Claude if key; otherwise offline)
+      - name: Bootstrap receipt (if missing)
+        run: |
+          if [ ! -f docs/receipt.latest.json ]; then
+            cat > docs/receipt.latest.json <<'JSON'
+          {
+            "receipt_version": "olr/1.2",
+            "claim": "Starter receipt for COLE.",
+            "because": ["We want a self-checking, self-reporting agent receipt."],
+            "but": [],
+            "so": "Guards will enrich this receipt with identity, temporal rhythm, and continuity checks.",
+            "topo": {},
+            "identity": {},
+            "narrative": {},
+            "temporal": {}
+          }
+          JSON
+          fi
+
+      - name: Starter index (if missing)
+        run: |
+          if [ ! -f docs/index.html ]; then
+            cat > docs/index.html <<'HTML'
+          <!doctype html>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width,initial-scale=1">
+          <title>COLE status</title>
+          <style>
+            :root { --bg:#0b0b0f; --fg:#e8e8f0; --mut:#9aa0aa; --tile:#14161b; --ok:#37d399; --warn:#fbbf24; --bad:#ef4444; }
+            body{margin:0;padding:24px;font:16px/1.5 system-ui,-apple-system,Segoe UI,Roboto;background:var(--bg);color:var(--fg)}
+            h1{font-size:20px;margin:0 0 16px 0}
+            .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}
+            .tile{background:var(--tile);border-radius:10px;padding:14px}
+            .muted{color:var(--mut);font-size:12px}
+            .small{font-size:14px;margin:6px 0}
+          </style>
+          <h1>COLE · agent health & rhythm</h1>
+          <div class="grid">
+            <div class="tile">
+              <div class="muted">Topology Health</div>
+              <div class="small">H <b id="H">–</b></div>
+              <div class="small">κ <b id="kappa">–</b> · χ <b id="chi">–</b> · ε <b id="eps">–</b> · R <b id="rigidity">–</b></div>
+            </div>
+            <div class="tile">
+              <div class="muted">Narrative & POV</div>
+              <div class="small">POV drift <b id="pov-drift">–</b> (expect <b id="pov-expect">–</b>)</div>
+              <div class="small">Novelty <b id="nov-rate">–</b> · Loop <b id="loop-risk">–</b></div>
+            </div>
+            <div class="tile">
+              <div class="muted">Temporal Rhythm</div>
+              <div class="small">Strength <b id="rh-str">–</b> · Variety <b id="rh-var">–</b> · PLV <b id="plv">–</b></div>
+              <div class="small">Period (lag) <b id="period">–</b> · Samples <b id="ns">–</b></div>
+            </div>
+            <div class="tile">
+              <div class="muted">Continuity & Reality</div>
+              <div class="small">Time marker <b id="mark">–</b> · Senses <b id="senses">–</b></div>
+              <div class="small">Entities <b id="ents">–</b></div>
+              <div class="small">Issues <b id="issues">0</b> · Notes <b id="notes">0</b></div>
+            </div>
+          </div>
+          <script>
+          (async()=>{
+            try{
+              const u = new URL('./receipt.latest.json', location.href);
+              u.searchParams.set('v', Date.now().toString());
+              const r = await fetch(u, {cache:'no-store'}); if(!r.ok) return;
+              const j = await r.json();
+              const topo = j.topo || {};
+              const id = j.identity || {}; const pov=id.pov||{}, nov=id.novelty||{};
+              const tmp = j.temporal || {}; const nf=tmp.natural_frequency||{}, rh=tmp.rhythm||{};
+              const cont=(j.narrative&&j.narrative.continuity)||{};
+              const pct = x => Number.isFinite(+x)?(+(x)*100).toFixed(0)+'%':'–';
+              const num = x => Number.isFinite(+x)?(+x).toFixed(2):'–';
+              document.getElementById('H').textContent = num(topo.H);
+              ['kappa','chi','eps','rigidity'].forEach(k=>{document.getElementById(k).textContent=num(topo[k])});
+              document.getElementById('pov-drift').textContent = pct(pov.drift);
+              document.getElementById('pov-expect').textContent = pov.expected_person||'–';
+              document.getElementById('nov-rate').textContent = pct(nov.new_phrasing_rate);
+              document.getElementById('loop-risk').textContent = (Number(nov.loop_risk)>=1?'high':'low');
+              document.getElementById('rh-str').textContent = num(rh.strength);
+              document.getElementById('rh-var').textContent = num(rh.variety);
+              document.getElementById('plv').textContent = num(rh.plv);
+              document.getElementById('period').textContent = rh.period_lag ?? '–';
+              document.getElementById('ns').textContent = nf.n_samples ?? '–';
+              document.getElementById('mark').textContent = cont.has_time_marker===true?'yes':(cont.has_time_marker===false?'no':'—');
+              document.getElementById('senses').textContent = (cont.senses_detected||[]).join(', ')||'—';
+              document.getElementById('ents').textContent = (cont.entities_now||[]).join(', ')||'—';
+              document.getElementById('issues').textContent = (cont.issues||[]).length;
+              document.getElementById('notes').textContent = (cont.notes||[]).length;
+            }catch(e){}
+          })();
+          </script>
+          HTML
+          fi
+
+      # ---- OPTIONAL enrichers (run only if present) ----
+      - name: Ingest OpenLine frame → receipt
+        run: |
+          if [ -f scripts/ingest_frame.py ]; then python scripts/ingest_frame.py || true; else echo "[skip] ingest_frame.py"; fi
+
+      - name: Training evolution → receipt (v1.2)
         env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          SEED: ${{ vars.SEED || 'unknown' }}
+          TRAIN_LOG_DIR: ${{ vars.TRAIN_LOG_DIR || 'logs/train' }}
+          EVAL_LOG: ${{ vars.EVAL_LOG || 'logs/eval/results.jsonl' }}
+          HP_SCHEDULE_JSON: ${{ vars.HP_SCHEDULE_JSON || 'logs/hparams.json' }}
         run: |
-          IMGS_INPUT="${{ inputs.image_urls }}"
-          PYIMGS=""
-          if [ -n "$IMGS_INPUT" ]; then
-            IFS=',' read -ra A <<< "$IMGS_INPUT"
-            for u in "${A[@]}"; do PYIMGS="$PYIMGS --image ${u}"; done
-          fi
+          if [ -f scripts/training_evolution_logger.py ]; then python scripts/training_evolution_logger.py || true; else echo "[skip] training_evolution_logger.py"; fi
 
-          if [ -n "$ANTHROPIC_API_KEY" ]; then
-            python scripts/claude_harness.py --model claude-3-5-sonnet-20240620 --prompt "${{ inputs.prompt || 'Direct technical assessment of the attached visuals; cite sources.' }}" $PYIMGS
-          else
-            python scripts/claude_harness.py --stdin <<'TXT'
-            The adapter ran in offline mode (no API key). Replace this text by running the workflow with ANTHROPIC_API_KEY and optional image URLs.
-            TXT
-          fi
-
-      - name: Ensure docs/ & copy receipt
+      - name: Snapshot receipt to history
         run: |
-          mkdir -p docs
-          cp artifacts/guard_receipt.json docs/receipt.latest.json
+          ts=$(date +%s)
+          cp docs/receipt.latest.json docs/history/receipt-$ts.json || true
 
-      - name: Commit docs back
+      - name: Commit docs back to repo
         run: |
-          git config user.name  "github-actions[bot]"
+          git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add docs/receipt.latest.json
-          git commit -m "chore: update receipt via harness [skip ci]" || echo "no changes"
-          git push
+          git add -A docs
+          if ! git diff --cached --quiet; then
+            git commit -m "chore: update docs/ status & receipt [skip ci]"
+            git push
+          else
+            echo "No changes to commit"
+          fi
 
-      # --- Pages deploy ---
       - name: Setup Pages
         uses: actions/configure-pages@v5
+
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
-        with: { path: docs }
+        with:
+          path: docs
+
       - name: Deploy to Pages
-        id: deployment
+        id: deploy
         uses: actions/deploy-pages@v4
+
+      # Always print one-line verdict for CI logs (no external deps)
+      - name: CI Guard Harness (one-line verdict)
+        if: always()
+        run: |
+          python - <<'PY'
+          import json,sys
+          try:
+              r=json.load(open("docs/receipt.latest.json"))
+          except Exception as e:
+              print("VERDICT: no-receipt"); sys.exit(0)
+          topo=r.get("topo",{})
+          k = topo.get("kappa") or r.get("telem",{}).get("kappa_eff")
+          dh=(r.get("temporal",{}).get("latest",{}) or {}).get("delta_hol")
+          status = "RED" if (k and dh and k>=0.85 and dh>=0.35) else ("AMBER" if ((k and k>=0.85) or (dh and dh>=0.35)) else "GREEN")
+          print(f"VERDICT: {status}  kappa={k}  delta_hol={dh}")
+          PY
