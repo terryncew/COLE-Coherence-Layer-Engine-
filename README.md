@@ -92,6 +92,12 @@ Holonomy drift: distance between previous and current state digests (≥0).
 python -m venv .venv && source .venv/bin/activate
 pip install -e .
 ```
+> **Prereq (1 line):** `pip install uv`  ← only needed if you run local scripts; GitHub Pages flow works without it.
+
+### Troubleshooting (10-second fixes)
+- **`uv: command not found`** → run `pip install uv`
+- **No Pages receipt visible** → make sure `docs/receipt.latest.json` exists (run the “COLE Pages” workflow), then refresh the Pages URL.
+- **Port conflict (local runs)** → use an alternate port flag if your local demo starts a server: `--port 8090`
 
 ### 2) Feed COLE an OLP frame
 
