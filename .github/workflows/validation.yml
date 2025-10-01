@@ -1,0 +1,25 @@
+name: COLE Validation
+on:
+  workflow_dispatch: {}
+  push:
+    paths:
+      - 'scripts/validate_suite.py'
+      - 'docs/validation/**'
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Python
+        uses: actions/setup-python@v5
+        with: { python-version: '3.11' }
+      - name: Validate suite
+        run: python scripts/validate_suite.py
+      - name: Commit artifacts
+        run: |
+          git config user.name "cole-bot"
+          git config user.email "cole@users.noreply.github.com"
+          git add docs/validation/results.csv docs/validation/index.html
+          git commit -m "validation: update results" || echo "no changes"
+          git push
