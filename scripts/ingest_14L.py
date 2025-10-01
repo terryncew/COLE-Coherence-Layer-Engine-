@@ -1,4 +1,4 @@
-# scripts/ingest_14L.py  (OLR/1.4L, stdlib-only)
+# scripts/ingest_14L.py  (OLR/1.4L, stdlib-only, first-run safe)
 from __future__ import annotations
 import json, math, re, time, zlib
 from pathlib import Path
@@ -13,11 +13,11 @@ ASSUME  = re.compile(r"\b(assume|suppose|hypothesize|let us suppose|let's assume
 RESOLVE = re.compile(r"\b(resolved|addressed|reconciled|countered|handled|fixed|mitigated)\b", re.I)
 CITEPAT = re.compile(r"\[[0-9]{1,3}\]|https?://|doi:\S+", re.I)
 
-def sentences(t:str): 
+def sentences(t:str):
     t=(t or "").strip()
     return [s.strip() for s in SENT_SPLIT.split(t) if s.strip()]
 
-def bow(s:str) -> Counter: 
+def bow(s:str) -> Counter:
     return Counter(w.lower() for w in TOK.findall(s or ""))
 
 def cosine(a:Counter, b:Counter)->float:
@@ -46,7 +46,7 @@ def sigma(x:float)->float:
 
 def jsd_vec(p, q, eps=1e-9):
     def _n(v):
-        s=sum(v); 
+        s=sum(v)
         return [eps]*len(v) if s<=0 else [max(eps, x/s) for x in v]
     P,Q=_n(p),_n(q); M=[(pi+qi)/2 for pi,qi in zip(P,Q)]
     def _kl(u,v): return sum(ui*math.log(ui/vi) for ui,vi in zip(u,v))
@@ -166,7 +166,15 @@ def load_state():
     if STATE.is_file():
         try: return json.loads(STATE.read_text("utf-8"))
         except: pass
-    return {"mu_len":400.0,"var_len":400.0,"prev_digest":None,"dhol_mu":0.0,"prev_xf":0}
+    # Seed a minimal previous digest so first run is smooth
+    return {
+        "mu_len": 400.0,
+        "var_len": 400.0,
+        "prev_digest": {"b0":1,"cycle_plus":0,"x_frontier":0,"s_over_c":1.0,"depth":1},
+        "dhol_mu": 0.0,
+        "prev_xf": 0,
+        "prev_ucr": 0.0
+    }
 
 def save_state(d): STATE.write_text(json.dumps(d,indent=2),encoding="utf-8")
 
@@ -222,11 +230,15 @@ def main():
     st   = load_state()
     mu, var = st["mu_len"], st["var_len"]
     prev_digest = st["prev_digest"]
-    # Δ_hol on vector incl. ucr
+
+    # ---- Δ_hol on vector incl. ucr (robust on first run) ----
     vec_keys=("b0","cycle_plus","x_frontier","s_over_c","depth")
-    p=[prev_digest.get(k,0) for k in vec_keys]+([st.get("prev_ucr",0.0)] if prev_digest else [])
-    q=[digest.get(k,0)      for k in vec_keys]+[UCR]
-    dhol_raw = jsd_vec(p,q,1e-9) if prev_digest else 0.0
+    if isinstance(prev_digest, dict):
+        p = [prev_digest.get(k,0) for k in vec_keys] + [st.get("prev_ucr", 0.0)]
+        q = [digest.get(k,0)      for k in vec_keys] + [UCR]
+        dhol_raw = jsd_vec(p, q, 1e-9)
+    else:
+        dhol_raw = 0.0
     dhol_mu  = 0.75*st.get("dhol_mu",0.0) + 0.25*dhol_raw
 
     # deletion suspect: contradictions dropped and no resolution language present
@@ -262,8 +274,7 @@ def main():
     REC.write_text(json.dumps(rec, indent=2), encoding="utf-8")
     print(f"[ok] 1.4L → status={status}  kappa={kappa:.3f}  dhol={dhol_mu:.3f}  ucr={UCR:.2f}  es={ES:.2f}")
 
-    # 8) persist state
-    # update mu/var with EWMA on length
+    # 8) persist state (EWMA)
     alpha=0.2
     mu2  = (1-alpha)*mu + alpha*L
     var2 = (1-alpha)*var + alpha*((L - mu2)**2)
