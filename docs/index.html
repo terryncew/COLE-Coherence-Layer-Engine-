@@ -65,8 +65,10 @@
     </div>
   </header>
 
+  <!-- KPI tiles -->
   <section class="grid" id="grid"></section>
 
+  <!-- Middle: glyph + bars -->
   <section class="twoCols" style="margin-top:10px">
     <div class="card">
       <div class="glyphTitle">Coherence glyph (risk grows outward)</div>
@@ -106,8 +108,9 @@
     </div>
   </section>
 
+  <!-- Policy hint -->
   <section class="card" style="margin-top:10px">
-    <div class="muted" id="rules">Rules loading…</div>
+    <div class="muted" id="rules">Badge policy v0.3: loading…</div>
   </section>
 
   <p class="note" style="margin-top:8px">Tip: Keep citations near claims; avoid silent deletions; stable paths beat long monologues.</p>
@@ -123,6 +126,7 @@
   const barKVal=$('barKVal'), barDVal=$('barDVal');
   const msgBox=$('msgBox'), warnBox=$('warnBox'), redBox=$('redBox');
 
+  // helpers
   function tile(label, value, hint, cls){
     const c=document.createElement('div'); c.className='card';
     const row=document.createElement('div'); row.className='kpi';
@@ -146,7 +150,9 @@
     return;
   }
 
+  // fields
   const of=rec.openline_frame||{}, t=of.telem||{}, d=of.digest||{}, latest=(rec.temporal&&rec.temporal.latest)||{};
+  const hz=rec.hazard||{};
   const num = v => (Number.isFinite(+v) ? +v : 0);
   const k   = num(t.kappa_eff ?? latest.kappa);
   const dhol= num(t.delta_hol ?? latest.delta_hol);
@@ -154,7 +160,11 @@
   const es  = num(t.evidence_strength);
   const cyc = num(d.cycle_plus);
   const X   = num(d.x_frontier);
+  const p_review = (typeof hz.p_review === 'number') ? hz.p_review : null;
+  const kWin = hz.k_window || 0;
 
+  // status/badge: prefer explicit receipt.badge -> status -> policy
+  const colorOf = s => s==='red' ? '#dc2626' : (s==='amber' ? '#f59e0b' : (s==='green' ? '#16a34a' : '#64748b'));
   function policyStatus(){
     if (cyc>0) return 'red';
     const red = ( (dhol>=cfg.tau_hol && (t.del_suspect===true)) ||
@@ -163,25 +173,27 @@
     const amber = (k>=cfg.tau_k) || (dhol>=cfg.tau_hol) || (ucr>=cfg.ucr_min);
     return amber ? 'amber' : 'green';
   }
-  const status=(rec.status||'').toLowerCase() || policyStatus();
-  const color = s => s==='red' ? '#dc2626' : (s==='amber' ? '#f59e0b' : '#16a34a');
+  const badge=(rec.badge||rec.status||policyStatus()).toLowerCase();
 
-  const cK = v => (v>=cfg.tau_k?'warn':'ok');
-  const cD = v => (v>=cfg.tau_hol?'warn':'ok');
-  const cU = v => (v>=cfg.ucr_min?'warn':'ok');
-  const cE = v => (v< cfg.es_min?'warn':'ok');
-  grid.appendChild(tile('κ (stress)', k.toFixed(3), 'Density vs structure', cK(k)));
-  grid.appendChild(tile('Δhol (drift)', dhol.toFixed(3), 'Path mismatch (EWMA JSD)', cD(dhol)));
-  grid.appendChild(tile('UCR', (ucr*100).toFixed(0)+'%', 'Unsupported-claim ratio', cU(ucr)));
-  grid.appendChild(tile('ES', (es*100).toFixed(0)+'%', 'Evidence strength', cE(es)));
+  // Top pill shows badge
+  txt.textContent=badge.toUpperCase();
+  dot.className='dot '+(badge==='red'?'badd':(badge==='amber'?'warnd':'okd'));
+  pill.hidden=false;
+
+  // KPI tiles (now includes hazard first)
+  const lampClass = b => b==='red'?'bad':(b==='amber'?'warn':(b==='green'?'ok':'mutelamp'));
+  if (p_review!==null) grid.appendChild(tile('Hazard', p_review.toFixed(2), `p_review · window ${kWin||'—'}`, lampClass(badge)));
+  grid.appendChild(tile('κ (stress)', k.toFixed(3), 'Density vs structure', (k>=cfg.tau_k?'warn':'ok')));
+  grid.appendChild(tile('Δhol (drift)', dhol.toFixed(3), 'Path mismatch (EWMA JSD)', (dhol>=cfg.tau_hol?'warn':'ok')));
+  grid.appendChild(tile('UCR', (ucr*100).toFixed(0)+'%', 'Unsupported-claim ratio', (ucr>=cfg.ucr_min?'warn':'ok')));
+  grid.appendChild(tile('ES', (es*100).toFixed(0)+'%', 'Evidence strength', (es<cfg.es_min?'warn':'ok')));
   grid.appendChild(tile('Cycles', String(cyc), 'cycle⁺ > 0 → RED', (cyc>0?'bad':'ok')));
   grid.appendChild(tile('X (contradictions)', String(X), 'Unresolved contradictions', (X>0?'warn':'ok')));
 
-  txt.textContent=status.toUpperCase();
-  dot.className='dot '+(status==='red'?'badd':(status==='amber'?'warnd':'okd'));
-  pill.hidden=false;
+  // Updated time
   $('updated').textContent = new Date((of.t_logical? of.t_logical*1000 : Date.now())).toLocaleString();
 
+  // Why/Try next (unchanged logic, keyed to classic guard policy)
   let why='', fix='';
   if (cyc>0){ why='Circular reasoning detected (cycle⁺>0)'; fix='Break the loop; add external evidence or restructure claims.'; }
   else if (dhol>=cfg.tau_hol && t.del_suspect){ why='Path drift with potential silent deletion'; fix='Add a resolution/handling sentence for removed contradictions.'; }
@@ -190,29 +202,17 @@
   else if (dhol>=cfg.tau_hol){ why='Path drift (Δhol high)'; fix='Stabilize reasoning across turns; avoid rewriting without resolution.'; }
   else if (ucr>=cfg.ucr_min){ why='Many claims lack nearby support'; fix='Place an evidence sentence or citation within ±1 sentence.'; }
 
-  if (status==='green' && !why){
-    why = 'All guardrails within thresholds';
-    fix = 'No action needed';
-    msgBox.hidden=false; warnBox.hidden=true; redBox.hidden=true;
-  } else if (status==='amber'){
-    warnBox.textContent = 'Heads up: something needs a quick look. See “Why” and “Try next”.';
-    warnBox.hidden=false; msgBox.hidden=true; redBox.hidden=true;
-  } else if (status==='red'){
-    redBox.textContent = 'Blocked: guardrails tripped. Fix the issue and re-run.';
-    redBox.hidden=false; warnBox.hidden=true; msgBox.hidden=true;
-  }
+  if (badge==='green' && !why){ msgBox.hidden=false; warnBox.hidden=true; redBox.hidden=true; }
+  else if (badge==='amber'){ warnBox.textContent='Heads up: something needs a quick look. See “Why” and “Try next”.'; warnBox.hidden=false; msgBox.hidden=true; redBox.hidden=true; }
+  else if (badge==='red'){ redBox.textContent='Blocked: guardrails tripped. Fix the issue and re-run.'; redBox.hidden=false; warnBox.hidden=true; msgBox.hidden=true; }
 
   $('why').textContent = why || '—';
   $('fix').textContent = fix || '—';
 
-  // ✅ FIXED: closing brace on ${cfg.es_min}
-  $('rules').textContent =
-    `Rules: RED if cycle⁺>0; or (Δhol≥${cfg.tau_hol} & del_suspect); or (κ≥${cfg.tau_k} & UCR≥${cfg.ucr_min} & ES<${cfg.es_min}). AMBER if any one is high.`
-      .replace(')', '})'); // ensure closing brace if minified tools strip it
-
+  // Bars (0..1 scale; tick shows threshold)
   function setBar(bar, tick, value, thresh){
     const fill = Math.max(0, Math.min(1, value));
-    bar.style.color = color(status);
+    bar.style.color = colorOf(badge);
     bar.querySelector('.fill').style.width = (fill*100).toFixed(1)+'%';
     tick.style.left = (Math.max(0, Math.min(1, thresh))*100).toFixed(1)+'%';
   }
@@ -221,6 +221,7 @@
   barKVal.textContent = k.toFixed(3);
   barDVal.textContent = dhol.toFixed(3);
 
+  // Coherence glyph
   const axes = [
     {label:'κ',     val: Math.max(0, Math.min(1, (cfg.tau_k? (k/(cfg.tau_k||1)) : 0)))},
     {label:'Δhol',  val: Math.max(0, Math.min(1, (cfg.tau_hol? (dhol/(cfg.tau_hol||1)) : 0)))},
@@ -254,13 +255,21 @@
   const path='M'+pts.map(p=>p[0].toFixed(2)+','+p[1].toFixed(2)).join('L')+'Z';
   const poly=document.createElementNS('http://www.w3.org/2000/svg','path');
   poly.setAttribute('d', path);
-  poly.setAttribute('fill', status==='red'?'#fee2e2':(status==='amber'?'#fff3cd':'#ecfdf5'));
-  poly.setAttribute('stroke', color(status)); poly.setAttribute('stroke-width','1.6'); glyph.appendChild(poly);
+  poly.setAttribute('fill', badge==='red'?'#fee2e2':(badge==='amber'?'#fff3cd':'#ecfdf5'));
+  poly.setAttribute('stroke', colorOf(badge)); poly.setAttribute('stroke-width','1.6'); glyph.appendChild(poly);
   const hub=document.createElementNS('http://www.w3.org/2000/svg','circle');
-  hub.setAttribute('cx',cx); hub.setAttribute('cy',cy); hub.setAttribute('r',2.1); hub.setAttribute('fill',color(status)); glyph.appendChild(hub);
+  hub.setAttribute('cx',cx); hub.setAttribute('cy',cy); hub.setAttribute('r',2.1); hub.setAttribute('fill',colorOf(badge)); glyph.appendChild(hub);
 
+  // legend chips
   const chips=[`κ ${k.toFixed(3)}`, `Δhol ${dhol.toFixed(3)}`, `UCR ${(ucr*100).toFixed(0)}%`, `ES ${(es*100).toFixed(0)}%`, `cycles ${cyc}`, `X ${X}`];
+  if (p_review!==null) chips.unshift(`p_review ${p_review.toFixed(2)}`);
   chips.forEach(s=>{ const span=document.createElement('span'); span.className='chip'; span.textContent=s; leg.appendChild(span); });
+
+  // Policy text (matches README)
+  $('rules').textContent =
+    `Badge policy v0.3 — WHITE (<3 runs). GREEN if p_review < 0.20 and no spike. AMBER otherwise. ` +
+    `RED if p_review ≥ 0.80 or (needle-fail & κ-spike). Guardrails still apply: cycle⁺>0 → RED; ` +
+    `Δhol ≥ ${cfg.tau_hol} with deletion-suspect; or κ ≥ ${cfg.tau_k} & UCR ≥ ${cfg.ucr_min} & ES < ${cfg.es_min}.`;
 })();
 </script>
 </body>
