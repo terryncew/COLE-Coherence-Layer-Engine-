@@ -1,2 +1,12 @@
-{ "argue_mins": 15, "review_mins": 5, "daily_review_budget": 60,
-  "bands": { "green":[0.0,0.20], "amber_monitor":[0.20,0.35], "amber_investigate":[0.35,0.80] } }
+{
+  "spec_version": "0.3",
+  "tau_review": 0.35,
+  "argue_mins": 15,
+  "review_mins": 5,
+  "daily_review_budget": 60,
+  "bands": {
+    "green": [0.0, 0.20],
+    "amber_monitor": [0.20, 0.35],
+    "amber_investigate": [0.35, 0.80]
+  }
+}
