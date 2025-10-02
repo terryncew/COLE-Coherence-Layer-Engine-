@@ -50,12 +50,6 @@ AMBER if any single dimension is high. Thresholds: `τ_k=0.75`, `τ_hol=0.35`, `
 
 ---
 
-## Examples
-
-Use `docs/examples/receipt-good.json` (green) and `docs/examples/receipt-bad.json` (red).
-
----
-
 ## Troubleshooting
 
 - `uv: command not found` → `pip install uv`  
