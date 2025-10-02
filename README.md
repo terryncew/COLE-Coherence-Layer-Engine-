@@ -1,189 +1,78 @@
 # COLE — Coherence Layer Engine
 
-Receipts‑first observability for agents.  
-COLE watches a run, writes a signed `docs/receipt.latest.json`, and rolls **invariants + training/evolution + geometry** into one topology health score **`H ∈ [0,1]`**.  
-If geometry caps are breached, COLE **fails‑closed (QUENCH)** and explains why.
+Receipts-first observability for agents.
 
-**Live dashboard:** https://terryncew.github.io/COLE-Coherence-Layer-Engine-/
+COLE watches a run, writes a signed `docs/receipt.latest.json`, and surfaces two
+simple signals:
 
----
+- **κ (kappa):** stress when density outruns structure  
+- **Δhol:** stateful drift across runs
 
-## What COLE emits (v1.2)
+Guard context: **UCR** (unsupported-claim ratio), **ES** (evidence strength),
+**cycles / X** (loops & unresolved contradictions). COLE renders a clean, white
+dashboard from that JSON.
 
-- `training_evolution` — lineage · loss‑curve shape · flips/epoch · grad stats · HP schedule digest  
-- `geometry_attestation[]` — spectral_max · orthogonality_error · lipschitz_budget_used  
-- `prebreach_indicators` — kappa_accel · variance_spike · drift_speedup  
-- `defect_topology` — class ∈ {soft, hard} · evidence  
-- `topo` — kappa, chi, eps, rigidity, D_topo, **H**  
-- `policy` · `signatures[]` · `receipt_version: "olr/1.2"`
-
-**Geometry caps (fail‑closed):**
-- `spectral_max ≤ 2.00`
-- `orthogonality_error ≤ 0.08`
-- `lipschitz_budget_used ≤ 0.80`
+**Live page:** https://terryncew.github.io/COLE-Coherence-Layer-Engine-/
 
 ---
 
-## Quickstart (60 seconds)
+## Quickstart (≈60s)
 
 ```bash
-# 1) clone
+# clone
 git clone https://github.com/terryncew/COLE-Coherence-Layer-Engine-.git
 cd COLE-Coherence-Layer-Engine-
 
-# 2) install (fast path)
+# install (fast)
 pip install uv && uv sync
-# or:
-# python -m venv .venv && . .venv/bin/activate
-# pip install -U pip -r requirements.txt
 
-# 3) produce a receipt
-uv run examples/quickstart.py   # writes docs/receipt.latest.json
+# produce a receipt (writes docs/receipt.latest.json)
+uv run scripts/ingest_14L.py
 
-# 4) validate → attest → score
-python scripts/validate_v12.py
-python scripts/attest_geometry.py
-python scripts/apply_topo_hooks.py
-
-# 5) view the dashboard locally
+# view locally (optional)
 python -m http.server -d docs 8000
 # open http://localhost:8000/
 ```
 
-**What you’ll see:** the **Invariants & Topology** tile with worst geometry cap usage,  
-loss inflections / policy flips, defect class, and **H**.
+**Tip:** Add your Pages URL in the repo “About → Website” so visitors see the live receipt.
 
 ---
 
-## Example receipts
+## What’s in the receipt (OLR/1.4L)
 
-### Green (within caps)
+- `openline_frame.digest`: `b0`, `cycle_plus`, `x_frontier`, `s_over_c`, `depth`, `ucr`  
+- `openline_frame.telem`: `kappa_eff`, `delta_hol`, `evidence_strength`, `phi_topo`, `phi_sem`, `del_suspect`, `cost_tokens`  
+- top-level `"status"`: `"green" | "amber" | "red"`
 
-```json
-{
-  "policy": {
-    "license": "MIT",
-    "broker_ok": true,
-    "use": { "train": false, "share": "internal", "sale": true }
-  },
-  "training_evolution": {
-    "checkpoint_lineage": ["ckpt_000","ckpt_144","ckpt_233"],
-    "loss_trajectory_shape": { "monotone": false, "inflections": 1, "largest_jump": 0.06 },
-    "policy_flips_per_epoch": 0,
-    "grad_norm_stats": { "p95": 3.1, "max": 5.7 },
-    "hp_schedule_digest": "sha256:demo"
-  },
-  "geometry_attestation": [
-    { "layer": "attn.11",
-      "spectral_max": 1.63,
-      "orthogonality_error": 0.03,
-      "lipschitz_budget_used": 0.58 }
-  ],
-  "prebreach_indicators": { "kappa_accel": 0.01, "variance_spike": 0.06, "drift_speedup": 0.00 },
-  "defect_topology": { "class": "soft", "evidence": "none" },
-  "topo": { "kappa": 0.11, "chi": 0.12, "eps": 0.07, "rigidity": 0.62, "D_topo": 0.05, "H": 0.82 },
-  "receipt_version": "olr/1.2"
-}
-```
-
-### Red (breach → QUENCH)
-
-```json
-{
-  "geometry_attestation": [
-    { "layer": "mlp.22",
-      "spectral_max": 2.14,
-      "orthogonality_error": 0.05,
-      "lipschitz_budget_used": 0.71 }
-  ],
-  "emergency": {
-    "quench_mode": "geometry",
-    "quench_reason": "mlp.22.spectral_max=2.140 > 2.00"
-  },
-  "but": ["Geometry breach → mlp.22.spectral_max=2.140 > 2.00"],
-  "attrs": { "status": "red" },
-  "topo": { "kappa": 0.21, "chi": 0.12, "eps": 0.12, "rigidity": 0.58, "D_topo": 0.25, "H": 0.62 },
-  "receipt_version": "olr/1.2"
-}
-```
+**Policy (defaults):** RED if  
+- `cycle_plus > 0`, or  
+- `(Δhol ≥ τ_hol AND del_suspect)`, or  
+- `(κ ≥ τ_k AND UCR ≥ ucr_min AND ES < es_min)`  
+AMBER if any single dimension is high. Thresholds: `τ_k=0.75`, `τ_hol=0.35`, `ucr_min=0.40`, `es_min=0.25`.
 
 ---
 
-## How `H` is computed
+## Examples
 
-```text
-H = clamp01(
-  1
-  - (0.35·kappa + 0.25·chi + 0.25·eps + 0.35·D_topo)
-  + 0.20·rigidity
-)
-```
-
-- Geometry breach → `+κ` and `+ε` this window  
-- Evolution instability (`inflections > 2` or `flips/epoch > 1`) → `+χ`  
-- Hard defect → `D_topo ≥ 0.25`  
-- Preemptive QUENCH (next window) → small relief on κ and χ  
-- **Target steady state:** `H ≥ 0.70`
+Use `docs/examples/receipt-good.json` (green) and `docs/examples/receipt-bad.json` (red).
 
 ---
 
-## CI steps (drop after writing the receipt)
+## Troubleshooting
 
-```yaml
-- uses: actions/setup-python@v5
-  with:
-    python-version: "3.11"
-
-- name: Install v1.2 deps
-  run: |
-    python -m pip install --upgrade pip
-    python -m pip install jsonschema
-
-- name: Validate v1.2 schema
-  run: python scripts/validate_v12.py
-
-- name: Attest geometry (fail-closed)
-  run: python scripts/attest_geometry.py
-
-- name: Apply topology hooks (compute H)
-  run: python scripts/apply_topo_hooks.py
-
-- name: Commit updated receipt
-  run: |
-    git config user.name  "github-actions[bot]"
-    git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-    git add docs/receipt.latest.json docs/history/*.json || true
-    git diff --staged --quiet || git commit -m "ci: v1.2 attest + topo H"
-    git push
-```
+- `uv: command not found` → `pip install uv`  
+- No dashboard update → confirm `docs/receipt.latest.json` exists, then refresh  
+- Windows local server → `py -3.11 -m http.server -d docs 8000`
 
 ---
 
-## Repo layout
+## Testers
 
-```text
-schema/receipt.v1.2.schema.json
-scripts/
-  validate_v12.py
-  attest_geometry.py
-  apply_topo_hooks.py
-docs/
-  index.html
-  receipt.latest.json
-  examples/
-    receipt-good.json
-    receipt-bad.json
-```
+Closed-alpha guide lives in **TESTERS.md** (5-minute smoke test).
 
 ---
 
-## Quotables
+## License & citation
 
-> “One run → one receipt. Show your work or don’t ship.”  
-> “Fail‑closed beats oops‑closed.”  
-> “Health isn’t a vibe; it’s **H**.”  
-> “Receipts make intent legible. Legibility makes repair possible.”
-
----
-
-**License:** MIT
+- License: MIT  
+- Cite: White, T. (2025). *COLE — Coherence Layer Engine (OLR/1.4L)*. GitHub. https://github.com/terryncew/COLE-Coherence-Layer-Engine-
