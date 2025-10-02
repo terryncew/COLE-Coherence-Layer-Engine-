@@ -1,38 +1,168 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>COLE · OpenLine Receipt (OLR/1.4L)</title>
+<style>
+  :root{
+    --bg:#ffffff; --ink:#0b0b10; --muted:#6a6f7a; --line:#e9ecf2; --tile:#ffffff;
+    --ok:#16a34a; --warn:#f59e0b; --bad:#dc2626; --chip:#f4f6fb; --chipline:#e6eaf3;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 -apple-system,system-ui,Segoe UI,Roboto,Inter,Helvetica,Arial,sans-serif}
+  .wrap{max-width:980px;margin:0 auto;padding:18px}
+  header{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:10px}
+  h1{font-size:22px;margin:0}
+  .sub{font-size:12px;color:var(--muted);margin:4px 0 0}
+
+  .grid{display:grid;grid-template-columns:repeat(6,1fr);gap:10px}
+  @media (max-width:900px){.grid{grid-template-columns:repeat(3,1fr)}}
+  @media (max-width:560px){.grid{grid-template-columns:repeat(2,1fr)}}
+  .card{background:var(--tile);border:1px solid var(--line);border-radius:14px;padding:12px}
+  .kpi{display:flex;align-items:center;gap:10px}
+  .lamp{width:12px;height:12px;border-radius:50%}
+  .ok{background:var(--ok)} .warn{background:var(--warn)} .bad{background:var(--bad)} .mutelamp{background:#c7c7cc}
+  .big{font-size:20px;font-weight:700}
+  .muted{color:var(--muted);font-size:12px}
+  .row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+  .btn{display:inline-block;background:#0b0b10;color:#fff;text-decoration:none;border:1px solid var(--line);padding:10px 12px;border-radius:10px;font-weight:700}
+  .btn:active{transform:translateY(1px)}
+  .pill{display:inline-flex;align-items:center;gap:10px;padding:8px 12px;border-radius:999px;border:1px solid var(--line);background:var(--chip);font-weight:700}
+  .pill .dot{width:10px;height:10px;border-radius:50%}
+  .okd{background:var(--ok)} .warnd{background:var(--warn)} .badd{background:var(--bad)} .whited{background:#9aa3b2}
+
+  .kv{display:grid;grid-template-columns:auto 1fr;gap:6px 10px;align-items:center}
+  .divider{height:1px;background:var(--line);margin:10px 0}
+
+  .barrow{display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:center}
+  .bar{position:relative;width:100%;height:10px;border-radius:999px;background:#f3f5f9;border:1px solid var(--line);overflow:hidden}
+  .bar .fill{position:absolute;left:0;top:0;bottom:0;background:currentColor;opacity:.9}
+  .bar .tick{position:absolute;top:-2px;bottom:-2px;width:2px;background:#9aa3b2}
+
+  .glyphTitle{font-size:12px;color:var(--muted);margin:0 0 6px}
+  .svgbox{width:100%;aspect-ratio:1/1;display:block}
+  .legend{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;font-size:12px;color:var(--muted)}
+  .chip{background:var(--chip);border:1px solid var(--chipline);border-radius:999px;padding:.25em .6em}
+
+  .twoCols{display:grid;grid-template-columns:1.1fr .9fr;gap:10px}
+  @media (max-width:860px){.twoCols{grid-template-columns:1fr}}
+
+  .note{font-size:12px;color:var(--muted)}
+  .success{background:#ecfdf5;border:1px solid #d1fae5;color:#065f46;padding:10px;border-radius:10px}
+  .warnbox{background:#fff7ed;border:1px solid #ffedd5;color:#7c2d12;padding:10px;border-radius:10px}
+  .redbox{background:#fef2f2;border:1px solid #fee2e2;color:#7f1d1d;padding:10px;border-radius:10px}
+  .whitebox{background:#f3f4f6;border:1px solid #e5e7eb;color:#111827;padding:10px;border-radius:10px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>COLE · OpenLine Receipt</h1>
+      <p class="sub">Lean 1.4L · “Receipts, not rhetoric.” Reads <code>docs/receipt.latest.json</code>, <code>docs/guard.14l.json</code> and <code>docs/policy.json</code>.</p>
+    </div>
+    <div class="pill" id="statusPill" hidden>
+      <span class="dot" id="statusDot"></span>
+      <span id="statusText">status</span>
+      <span style="font-weight:600;color:#6b7280">·</span>
+      <span id="hazardText" title="p_review (hazard)">—</span>
+    </div>
+  </header>
+
+  <!-- KPI tiles -->
+  <section class="grid" id="grid"></section>
+
+  <!-- Middle: glyph + bars -->
+  <section class="twoCols" style="margin-top:10px">
+    <div class="card">
+      <div class="glyphTitle">Coherence glyph (risk grows outward)</div>
+      <svg class="svgbox" viewBox="0 0 120 120" role="img" aria-label="coherence glyph" id="glyph"></svg>
+      <div class="legend" id="legend"></div>
+    </div>
+
+    <div class="card">
+      <div class="glyphTitle">Signals at a glance</div>
+      <div class="barrow" style="margin-top:2px">
+        <div style="width:52px;color:var(--muted)">κ</div>
+        <div class="bar" id="barK"><div class="fill"></div><div class="tick" id="barKTick"></div></div>
+        <div id="barKVal" style="width:56px;text-align:right">—</div>
+      </div>
+      <div class="barrow" style="margin-top:6px">
+        <div style="width:52px;color:var(--muted)">Δhol</div>
+        <div class="bar" id="barD"><div class="fill"></div><div class="tick" id="barDTick"></div></div>
+        <div id="barDVal" style="width:56px;text-align:right">—</div>
+      </div>
+
+      <div class="row" style="margin-top:10px">
+        <a class="btn" href="./receipt.latest.json" download>Download receipt</a>
+        <a class="btn" href="./history/">History</a>
+      </div>
+
+      <div class="divider"></div>
+
+      <!-- friendly messages -->
+      <div id="whiteBox" class="whitebox" hidden>Warming up: the first few runs calibrate a baseline. Badge turns green/amber/red after a short history window.</div>
+      <div id="msgBox" class="success" hidden>All guardrails within thresholds. Looks good — no action needed.</div>
+      <div id="warnBox" class="warnbox" hidden>Heads up: something needs a quick look. See “Why” and “Try next”.</div>
+      <div id="redBox"  class="redbox"  hidden>Blocked: guardrails tripped. Fix the issue and re-run.</div>
+
+      <div class="divider"></div>
+      <div class="kv">
+        <div class="muted">Updated</div><div id="updated">—</div>
+        <div class="muted">Why</div><div id="why">—</div>
+        <div class="muted">Try next</div><div id="fix">—</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Value card -->
+  <section class="card" style="margin-top:10px">
+    <div class="muted">Value (policy-aware, est.)</div>
+    <div class="row" style="margin-top:6px">
+      <span class="chip" id="savedChip">Saved minutes/run: —</span>
+      <span class="chip">Goodhart guard: κ + Δhol + UCR</span>
+    </div>
+  </section>
+
+  <!-- Rules -->
+  <section class="card" style="margin-top:10px">
+    <div class="muted" id="rules">Rules: loading…</div>
+  </section>
+
+  <p class="note" style="margin-top:8px">Tip: Keep citations near claims; avoid silent deletions; stable paths beat long monologues.</p>
+</div>
+
 <script>
 (async function(){
   const $ = id => document.getElementById(id);
   const grid = $('grid');
-  const pill=$('statusPill'), dot=$('statusDot'), txt=$('statusText');
+  const pill=$('statusPill'), dot=$('statusDot'), txt=$('statusText'), haz=$('hazardText');
   const glyph=$('glyph'), leg=$('legend');
   const barK=$('barK'), barD=$('barD'), barKTick=$('barKTick'), barDTick=$('barDTick');
   const barKVal=$('barKVal'), barDVal=$('barDVal');
-  const msgBox=$('msgBox'), warnBox=$('warnBox'), redBox=$('redBox');
+  const msgBox=$('msgBox'), warnBox=$('warnBox'), redBox=$('redBox'), whiteBox=$('whiteBox');
+  const savedChip=$('savedChip');
 
   function tile(label, value, hint, cls){
     const c=document.createElement('div'); c.className='card';
     const row=document.createElement('div'); row.className='kpi';
     const lamp=document.createElement('div'); lamp.className='lamp '+(cls||'mutelamp');
     const b=document.createElement('div'); b.className='big'; b.textContent=value;
-    const cap=document.createElement('div'); cap.innerHTML =
-      `<div class="muted">${label}</div><div class="muted" style="font-size:11px">${hint||''}</div>`;
+    const cap=document.createElement('div'); cap.innerHTML = `<div class="muted">${label}</div><div class="muted" style="font-size:11px">${hint||''}</div>`;
     row.appendChild(lamp); row.appendChild(b); c.appendChild(row); c.appendChild(cap); return c;
   }
-
   const cfgDefault={tau_k:.75,tau_hol:.35,ucr_min:.40,es_min:.25};
+  const polDefault={argue_mins:15,review_mins:5,daily_review_budget:60,bands:{green:[0,0.20],amber_monitor:[0.20,0.35],amber_investigate:[0.35,0.80]}};
+
   async function jget(path){
     try{ const u=new URL(path,location.href); u.searchParams.set('v',Date.now()); const r=await fetch(u,{cache:'no-store'}); return r.ok? r.json(): null; }
     catch{ return null; }
   }
 
-  // load receipt, guard thresholds, and (optional) policy for bands/tau_review
-  const [rec, cfg, policy] = await Promise.all([
-    jget('./receipt.latest.json'),
-    jget('./guard.14l.json'),
-    jget('./policy.json')
-  ]);
-  const guard = cfg || cfgDefault;
-  const bands = (policy && policy.bands) || {green:[0,0.20], amber_monitor:[0.20,0.35], amber_investigate:[0.35,0.80]};
-  const tau_review = (policy && policy.tau_review)!=null ? policy.tau_review : bands.amber_investigate[0];
+  const rec = await jget('./receipt.latest.json');
+  const cfg = await jget('./guard.14l.json') || cfgDefault;
+  const pol = await jget('./policy.json') || polDefault;
 
   if(!rec){
     grid.appendChild(tile('No receipt found','—','Add docs/receipt.latest.json','warn'));
@@ -40,8 +170,8 @@
     return;
   }
 
+  // numbers
   const of=rec.openline_frame||{}, t=of.telem||{}, d=of.digest||{}, latest=(rec.temporal&&rec.temporal.latest)||{};
-  const hz=rec.hazard||{};
   const num = v => (Number.isFinite(+v) ? +v : 0);
   const k   = num(t.kappa_eff ?? latest.kappa);
   const dhol= num(t.delta_hol ?? latest.delta_hol);
@@ -49,30 +179,22 @@
   const es  = num(t.evidence_strength);
   const cyc = num(d.cycle_plus);
   const X   = num(d.x_frontier);
-  const pRev= num(hz.p_review);
-  const kWin= num(hz.k_window);
+  const hazard = ((rec.hazard||{}).p_review!=null) ? +rec.hazard.p_review : null;
+  const kWin = ((rec.hazard||{}).k_window!=null) ? +rec.hazard.k_window : 0;
 
-  // status (prefer explicit badge/status; fall back to policy)
-  function policyStatus(){
-    if (cyc>0) return 'red';
-    const red = ( (dhol>=guard.tau_hol && (t.del_suspect===true)) ||
-                  (k>=guard.tau_k && ucr>=guard.ucr_min && es<guard.es_min) );
-    if (red) return 'red';
-    const amber = (k>=guard.tau_k) || (dhol>=guard.tau_hol) || (ucr>=guard.ucr_min);
-    return amber ? 'amber' : 'green';
-  }
-  let status = String(rec.badge||rec.status||'').toLowerCase();
-  if(!status) status = policyStatus();
-  // warm-up always shows WHITE
-  if (kWin && kWin < 3) status = 'white';
+  // status + pill
+  const status = String(rec.badge||rec.status||'white').toLowerCase();
+  const color = s => s==='red' ? '#dc2626' : (s==='amber' ? '#f59e0b' : (s==='green' ? '#16a34a' : '#9aa3b2'));
+  txt.textContent = status.toUpperCase();
+  dot.className='dot '+(status==='red'?'badd':(status==='amber'?'warnd':(status==='green'?'okd':'whited')));
+  haz.textContent = (hazard==null? '—' : hazard.toFixed(2));
+  pill.hidden=false;
 
-  const color = s => s==='red' ? '#dc2626' : (s==='amber' ? '#f59e0b' : (s==='green' ? '#16a34a' : '#9aa0aa'));
-
-  // KPI tiles
-  const cK = v => (v>=guard.tau_k?'warn':'ok');
-  const cD = v => (v>=guard.tau_hol?'warn':'ok');
-  const cU = v => (v>=guard.ucr_min?'warn':'ok');
-  const cE = v => (v< guard.es_min?'warn':'ok');
+  // tiles (six only)
+  const cK = v => (v>=cfg.tau_k?'warn':'ok');
+  const cD = v => (v>=cfg.tau_hol?'warn':'ok');
+  const cU = v => (v>=cfg.ucr_min?'warn':'ok');
+  const cE = v => (v< cfg.es_min?'warn':'ok');
   grid.appendChild(tile('κ (stress)', k.toFixed(3), 'Density vs structure', cK(k)));
   grid.appendChild(tile('Δhol (drift)', dhol.toFixed(3), 'Path mismatch (EWMA JSD)', cD(dhol)));
   grid.appendChild(tile('UCR', (ucr*100).toFixed(0)+'%', 'Unsupported-claim ratio', cU(ucr)));
@@ -80,64 +202,51 @@
   grid.appendChild(tile('Cycles', String(cyc), 'cycle⁺ > 0 → RED', (cyc>0?'bad':'ok')));
   grid.appendChild(tile('X (contradictions)', String(X), 'Unresolved contradictions', (X>0?'warn':'ok')));
 
-  // Status pill + updated time
-  txt.textContent=status.toUpperCase();
-  dot.className='dot '+(status==='red'?'badd':(status==='amber'?'warnd':(status==='green'?'okd':'mutelamp')));
-  pill.hidden=false;
+  // updated
   $('updated').textContent = new Date((of.t_logical? of.t_logical*1000 : Date.now())).toLocaleString();
 
-  // Friendly messages + Why/Try next
+  // Why / Try next
   let why='', fix='';
   if (status==='white'){
-    why = `Warming up — not enough history yet (window ${kWin || 0}/10).`;
-    fix = 'Run a few more receipts to calibrate the baseline.';
-    msgBox.hidden=true; warnBox.hidden=true; redBox.hidden=true;
+    whiteBox.hidden=false; msgBox.hidden=true; warnBox.hidden=true; redBox.hidden=true;
+    why = 'Warming up (insufficient history)';
+    fix = 'Generate a few more receipts to calibrate the baseline.';
   } else if (status==='green'){
-    why = 'All guardrails within thresholds; hazard below review cutoff.';
-    fix = 'No action needed.';
-    msgBox.hidden=false; msgBox.textContent = 'All guardrails within thresholds. Looks good — no action needed.';
-    warnBox.hidden=true; redBox.hidden=true;
+    msgBox.hidden=false; whiteBox.hidden=true; warnBox.hidden=true; redBox.hidden=true;
+    why = 'All guardrails within thresholds';
+    fix = 'No action needed';
   } else if (status==='amber'){
-    // classify amber band for a better hint
-    const band = (pRev>=bands.amber_investigate[0]) ? 'investigate' : 'monitor';
-    if (cyc>0){ why='Circular reasoning detected (cycle⁺>0)'; fix='Break the loop; add external evidence or restructure claims.'; }
-    else if (dhol>=guard.tau_hol && t.del_suspect){ why='Path drift with potential silent deletion'; fix='Add a resolution/handling sentence for removed contradictions.'; }
-    else if (k>=guard.tau_k && ucr>=guard.ucr_min && es<guard.es_min){ why='High stress + unsupported claims + weak evidence'; fix='Add citations or “according to…” near claims.'; }
-    else if (k>=guard.tau_k){ why='Elevated stress (κ high)'; fix='Shorten or add structure/support so S* rises.'; }
-    else if (dhol>=guard.tau_hol){ why='Path drift (Δhol high)'; fix='Stabilize reasoning across turns; avoid rewriting without resolution.'; }
-    else if (ucr>=guard.ucr_min){ why='Many claims lack nearby support'; fix='Place an evidence sentence or citation within ±1 sentence.'; }
-    warnBox.textContent = (band==='monitor')
-      ? 'Heads up (monitor): something is edging up. See “Why” / “Try next”.'
-      : 'Investigate: hazard is above review threshold. See “Why” / “Try next”.';
-    warnBox.hidden=false; msgBox.hidden=true; redBox.hidden=true;
+    warnBox.hidden=false; whiteBox.hidden=true; msgBox.hidden=true; redBox.hidden=true;
+    if (k>=cfg.tau_k) { why = 'Elevated stress (κ high)'; fix='Shorten or add structure/support so S* rises.'; }
+    else if (dhol>=cfg.tau_hol){ why='Path drift (Δhol high)'; fix='Stabilize reasoning across turns; avoid silent rewrites.'; }
+    else if (ucr>=cfg.ucr_min){ why='Many claims lack nearby support'; fix='Place an evidence sentence or citation within ±1 sentence.'; }
   } else if (status==='red'){
-    redBox.textContent = 'Blocked: guardrails tripped. Fix the issue and re-run.';
-    redBox.hidden=false; warnBox.hidden=true; msgBox.hidden=true;
+    redBox.hidden=false; whiteBox.hidden=true; msgBox.hidden=true; warnBox.hidden=true;
     if (cyc>0){ why='Circular reasoning detected (cycle⁺>0)'; fix='Break the loop; add external evidence or restructure claims.'; }
-    else if (dhol>=guard.tau_hol && t.del_suspect){ why='Path drift with potential silent deletion'; fix='Add a resolution/handling sentence for removed contradictions.'; }
-    else if (k>=guard.tau_k && ucr>=guard.ucr_min && es<guard.es_min){ why='High stress + unsupported claims + weak evidence'; fix='Add citations or “according to…” near claims.'; }
+    else if (dhol>=cfg.tau_hol && t.del_suspect){ why='Path drift with potential silent deletion'; fix='Add a resolution/handling sentence for removed contradictions.'; }
+    else if (k>=cfg.tau_k && ucr>=cfg.ucr_min && es<cfg.es_min){ why='High κ + unsupported claims + weak evidence'; fix='Add citations or “according to…” near claims.'; }
   }
   $('why').textContent = why || '—';
   $('fix').textContent = fix || '—';
 
-  // Bars (0..1 scale; tick shows threshold)
+  // bars (0..1; tick at thresholds)
   function setBar(bar, tick, value, thresh){
     const fill = Math.max(0, Math.min(1, value));
     bar.style.color = color(status);
     bar.querySelector('.fill').style.width = (fill*100).toFixed(1)+'%';
     tick.style.left = (Math.max(0, Math.min(1, thresh))*100).toFixed(1)+'%';
   }
-  setBar(barK, barKTick, k,   guard.tau_k||.75);
-  setBar(barD, barDTick, dhol,guard.tau_hol||.35);
+  setBar(barK, barKTick, k,   cfg.tau_k||.75);
+  setBar(barD, barDTick, dhol,cfg.tau_hol||.35);
   barKVal.textContent = k.toFixed(3);
   barDVal.textContent = dhol.toFixed(3);
 
-  // Glyph (same as before)
+  // glyph
   const axes = [
-    {label:'κ',     val: Math.max(0, Math.min(1, (guard.tau_k? (k/(guard.tau_k||1)) : 0)))},
-    {label:'Δhol',  val: Math.max(0, Math.min(1, (guard.tau_hol? (dhol/(guard.tau_hol||1)) : 0)))},
-    {label:'UCR',   val: Math.max(0, Math.min(1, (guard.ucr_min? (ucr/(guard.ucr_min||1)) : 0)))},
-    {label:'low ES',val: Math.max(0, Math.min(1, (guard.es_min? ((guard.es_min - es)/(guard.es_min||1)) : 0)))},
+    {label:'κ',     val: Math.max(0, Math.min(1, (cfg.tau_k? (k/(cfg.tau_k||1)) : 0)))},
+    {label:'Δhol',  val: Math.max(0, Math.min(1, (cfg.tau_hol? (dhol/(cfg.tau_hol||1)) : 0)))},
+    {label:'UCR',   val: Math.max(0, Math.min(1, (cfg.ucr_min? (ucr/(cfg.ucr_min||1)) : 0)))},
+    {label:'low ES',val: Math.max(0, Math.min(1, (cfg.es_min? ((cfg.es_min - es)/(cfg.es_min||1)) : 0)))},
     {label:'cycles',val: cyc>0 ? 1 : 0},
     {label:'X',     val: Math.max(0, Math.min(1, X/3))}
   ];
@@ -170,13 +279,24 @@
   const hub=document.createElementNS('http://www.w3.org/2000/svg','circle');
   hub.setAttribute('cx',cx); hub.setAttribute('cy',cy); hub.setAttribute('r',2.1); hub.setAttribute('fill',color(status)); glyph.appendChild(hub);
 
-  const chips=[`κ ${k.toFixed(3)}`, `Δhol ${dhol.toFixed(3)}`, `UCR ${(ucr*100).toFixed(0)}%`, `ES ${(es*100).toFixed(0)}%`, `cycles ${cyc}`, `X ${X}`];
-  chips.forEach(s=>{ const span=document.createElement('span'); span.className='chip'; span.textContent=s; leg.appendChild(span); });
+  // Value: saved minutes/run (expected)
+  function expectedSavedMinutes(policy, p){
+    const A = Number(policy.argue_mins||15), R = Number(policy.review_mins||5);
+    if (!Number.isFinite(p)) return null;
+    // simple expectation: if review triggers with prob p, expected net saved per run:
+    // (A - R) * p  (only review when hazard is high)
+    const saved = Math.max(0, (A-R)) * Math.max(0, Math.min(1, p));
+    return Math.round(saved*10)/10;
+  }
+  const saved = expectedSavedMinutes(pol, hazard==null?0:hazard);
+  savedChip.textContent = 'Saved minutes/run: ' + (saved==null? '—' : saved.toFixed(1));
 
-  // Rules footer — include WHITE explanation
+  // Rules text with thresholds and WHITE definition
   $('rules').textContent =
-    `Rules: RED if cycle⁺>0; or (Δhol≥${guard.tau_hol} & del_suspect); or (κ≥${guard.tau_k} & UCR≥${guard.ucr_min} & ES<${guard.es_min}). ` +
-    `AMBER if any one is high (monitor ${bands.amber_monitor[0]}–${bands.amber_monitor[1]}, investigate ${bands.amber_investigate[0]}–${bands.amber_investigate[1]} by p_review). ` +
-    `GREEN if p_review<${bands.green[1]} for recent runs with no spikes. WHITE = warm-up (insufficient history, k_window<3).`;
+    `Rules: RED if cycle⁺>0; or (Δhol≥${cfg.tau_hol} & del_suspect); or (κ≥${cfg.tau_k} & UCR≥${cfg.ucr_min} & ES<${cfg.es_min}). ` +
+    `AMBER if any one is high. GREEN when within thresholds for the recent window. ` +
+    `WHITE = warm-up (not enough history yet).`;
 })();
 </script>
+</body>
+</html>
