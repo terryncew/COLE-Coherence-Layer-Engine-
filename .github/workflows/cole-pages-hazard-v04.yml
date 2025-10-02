@@ -1,0 +1,155 @@
+name: COLE — Pages + Hazard Badge (v0.4)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["main"]
+    paths:
+      - "scripts/ingest_14L.py"
+      - "scripts/hazard_badge.py"
+      - "docs/**"
+      - ".github/workflows/cole-pages-hazard-v04.yml"
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: cole-pages-hazard-v04
+  cancel-in-progress: true
+
+jobs:
+  build-and-deploy:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Checkout (full history for rebase-safe push)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Ensure folders
+        run: |
+          mkdir -p docs/history docs/style_history docs/memory schema scripts artifacts logs/train logs/eval .state
+
+      - name: Bootstrap minimal receipt/config/index (if missing)
+        run: |
+          if [ ! -f docs/receipt.latest.json ]; then
+            cat > docs/receipt.latest.json <<'JSON'
+          {
+            "receipt_version": "olr/1.4L",
+            "openline_frame": { "digest": {}, "telem": {}, "t_logical": 0 },
+            "status": "white",
+            "temporal": { "latest": {} }
+          }
+          JSON
+          fi
+          if [ ! -f docs/guard.14l.json ]; then
+            echo '{ "tau_k": 0.75, "tau_hol": 0.35, "ucr_min": 0.40, "es_min": 0.25 }' > docs/guard.14l.json
+          fi
+          if [ ! -f docs/index.html ]; then
+            cat > docs/index.html <<'HTML'
+          <!doctype html>
+          <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+          <title>COLE · OpenLine Receipt (Lean 1.4L)</title>
+          <style>
+            :root { --bg:#0b0b0f; --fg:#e8e8f0; --mut:#9aa0aa; --tile:#14161b }
+            body{margin:0;padding:24px;font:16px/1.5 system-ui,-apple-system,Segoe UI,Roboto;background:var(--bg);color:var(--fg)}
+            .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}
+            .tile{background:var(--tile);border-radius:10px;padding:14px}
+            .muted{color:var(--mut);font-size:12px}
+            .small{font-size:14px;margin:6px 0}
+            .tag{display:inline-block;padding:.2em .6em;border-radius:6px;color:#fff}
+          </style>
+          <h1>COLE · OpenLine Receipt (Lean 1.4L)</h1>
+          <div class="grid">
+            <div class="tile">
+              <div class="muted">Coherence Signals</div>
+              <div class="small">κ <b id="kappa">—</b> · Δhol <b id="dhol">—</b></div>
+              <div class="small">UCR <b id="ucr">—</b> · ES <b id="es">—</b></div>
+              <div class="small">badge <b id="badge" class="tag">WHITE</b> · p_review <b id="prev">—</b></div>
+            </div>
+          </div>
+          <script>
+          (async()=>{
+            try{
+              const u = new URL('./receipt.latest.json', location.href);
+              u.searchParams.set('v', Date.now().toString());
+              const r = await fetch(u,{cache:'no-store'}); if(!r.ok) return;
+              const j = await r.json();
+              const of=(j.openline_frame||{}), d=(of.digest||{}), t=(of.telem||{}), hz=(j.hazard||{});
+              const S=v=>Number.isFinite(+v)?(+v).toFixed(3):'—';
+              const E=(id,v)=>{const e=document.getElementById(id); if(e) e.textContent=v;};
+              E('kappa', S(t.kappa_eff)); E('dhol', S(t.delta_hol));
+              E('ucr', S(d.ucr)); E('es', S(t.evidence_strength));
+              E('prev', S(hz.p_review));
+              const b = String(j.badge||j.status||'white').toLowerCase();
+              const el = document.getElementById('badge'); el.textContent=b.toUpperCase();
+              el.style.background = b==='red' ? '#7f1d1d'
+                : (b==='amber' ? '#a16207' : (b==='green' ? '#14532d' : '#334155'));
+            }catch(e){}
+          })();
+          </script>
+          HTML
+          fi
+          if [ ! -f docs/policy.json ]; then
+            cat > docs/policy.json <<'JSON'
+          { "argue_mins": 15, "review_mins": 5, "daily_review_budget": 60,
+            "bands": { "green":[0.0,0.20], "amber_monitor":[0.20,0.35], "amber_investigate":[0.35,0.80] } }
+          JSON
+          fi
+
+      - name: Run lean guard (OLR/1.4L)
+        run: |
+          if [ -f scripts/ingest_14L.py ]; then
+            python scripts/ingest_14L.py
+          else
+            echo "::error ::scripts/ingest_14L.py missing"; exit 1
+          fi
+
+      - name: Compute hazard & badge (v0.4)
+        run: python scripts/hazard_badge.py
+
+      - name: Snapshot receipt to history
+        run: |
+          ts=$(date +%s)
+          cp docs/receipt.latest.json "docs/history/receipt-${ts}.json" || true
+
+      - name: Commit docs & state back to repo (rebase-safe)
+        env:
+          BRANCH: ${{ github.ref_name }}
+        run: |
+          set -e
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A docs .state
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "hazard(v0.4): p_review/badge + ledger [skip ci]"
+            git fetch origin "$BRANCH" --depth=1
+            git pull --rebase origin "$BRANCH"
+            git push origin HEAD:"$BRANCH"
+          fi
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload artifact (docs/)
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs
+
+      - name: Deploy to Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
