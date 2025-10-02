@@ -34,8 +34,6 @@ python -m http.server -d docs 8000
 # open http://localhost:8000/
 ```
 
-**Tip:** Add your Pages URL in the repo “About → Website” so visitors see the live receipt.
-
 ---
 
 ## What’s in the receipt (OLR/1.4L)
