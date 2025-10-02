@@ -16,7 +16,7 @@ permissions:
 
 concurrency:
   group: pages-lean-14l
-  cancel-in-progress: false
+  cancel-in-progress: true   # avoid two runs racing the same push
 
 jobs:
   build-and-deploy:
@@ -27,8 +27,12 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
 
     steps:
+      # Checkout the real ref with full history (so rebase works)
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
+          fetch-depth: 0
 
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -135,16 +139,23 @@ jobs:
           ts=$(date +%s)
           cp docs/receipt.latest.json docs/history/receipt-$ts.json || true
 
+      # Rebase-safe commit to avoid "remote contains work you do not have locally"
       - name: Commit docs & state back to repo
+        env:
+          BRANCH: ${{ github.ref_name }}
         run: |
+          set -e
           git config user.name  "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add -A docs .state
-          if ! git diff --cached --quiet; then
-            git commit -m "chore(1.4L): update receipt & status [skip ci]"
-            git push
-          else
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add -A docs .state || true
+          if git diff --staged --quiet; then
             echo "No changes to commit"
+          else
+            git commit -m "chore(1.4L): update receipt & status [skip ci]"
+            git fetch origin "$BRANCH"
+            git pull --rebase origin "$BRANCH"
+            git push origin HEAD:"$BRANCH"
           fi
 
       - name: Setup Pages
