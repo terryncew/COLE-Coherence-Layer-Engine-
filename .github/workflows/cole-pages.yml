@@ -1,4 +1,4 @@
-name: COLE Pages — Lean 1.4L (guards + status)
+name: COLE Pages — Lean 1.4L (guards + status) v2
 
 on:
   workflow_dispatch:
@@ -8,6 +8,7 @@ on:
       - "scripts/ingest_14L.py"
       - "docs/**"
       - ".github/workflows/cole-pages-lean-14l.yml"
+      # TIP: remove the three 'paths' lines if you want this to run on ANY push to main.
 
 permissions:
   contents: write
@@ -54,9 +55,12 @@ jobs:
             "because": ["Self-checking, self-reporting agent receipt."],
             "but": [],
             "so": "Lean guards will enrich this with κ (kappa), Δhol and UCR/ES.",
-            "openline_frame": { "digest": {}, "telem": {} },
-            "status": "green",
-            "temporal": { "latest": {} }
+            "openline_frame": {
+              "digest": { "b0":1, "cycle_plus":0, "x_frontier":0, "s_over_c":1.0, "depth":1, "ucr":0.00 },
+              "telem":  { "kappa_eff":0.20, "delta_hol":0.05, "evidence_strength":0.50, "del_suspect": false, "cost_tokens": 42 },
+              "t_logical": 1730000000
+            },
+            "status": "green"
           }
           JSON
           fi
@@ -76,50 +80,106 @@ jobs:
           TXT
           fi
 
-      - name: Starter index (if missing)
+      - name: Starter index (if missing) — light UI + friendly messages
         run: |
           if [ ! -f docs/index.html ]; then
             cat > docs/index.html <<'HTML'
-          <!doctype html>
-          <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+          <!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
           <title>COLE · OpenLine Receipt (Lean 1.4L)</title>
           <style>
-            :root { --bg:#0b0b0f; --fg:#e8e8f0; --mut:#9aa0aa; --tile:#14161b }
-            body{margin:0;padding:24px;font:16px/1.5 system-ui,-apple-system,Segoe UI,Roboto;background:var(--bg);color:var(--fg)}
-            .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}
-            .tile{background:var(--tile);border-radius:10px;padding:14px}
-            .muted{color:var(--mut);font-size:12px}
-            .small{font-size:14px;margin:6px 0}
-            .tag{display:inline-block;padding:.2em .6em;border-radius:6px;color:#fff}
+            :root{--bg:#fff;--ink:#0b0b10;--muted:#6a6f7a;--line:#e9ecf2;--ok:#16a34a;--warn:#f59e0b;--bad:#dc2626}
+            html,body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,-apple-system,Segoe UI,Roboto,Inter}
+            .wrap{max-width:960px;margin:0 auto;padding:18px}
+            .card{border:1px solid var(--line);border-radius:14px;background:#fff;padding:12px;margin-top:10px}
+            .grid{display:grid;grid-template-columns:repeat(6,1fr);gap:10px}
+            @media(max-width:900px){.grid{grid-template-columns:repeat(3,1fr)}}
+            @media(max-width:560px){.grid{grid-template-columns:repeat(2,1fr)}}
+            .kpi{display:flex;align-items:center;gap:8px}
+            .lamp{width:12px;height:12px;border-radius:50%}
+            .ok{background:var(--ok)} .warn{background:var(--warn)} .bad{background:var(--bad)} .mut{background:#c7c7cc}
+            .big{font-weight:700;font-size:20px}
+            .muted{color:var(--muted);font-size:12px}
+            .pill{display:inline-flex;align-items:center;gap:8px;padding:6px 10px;border:1px solid var(--line);border-radius:999px;background:#f6f8fb;font-weight:600}
+            .dot{width:10px;height:10px;border-radius:50%}
+            .row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+            .btn{background:#0b0b10;color:#fff;padding:10px 12px;border-radius:10px;text-decoration:none;font-weight:700}
+            .bar{height:10px;background:#f2f4f8;border:1px solid var(--line);border-radius:999px;position:relative;overflow:hidden}
+            .fill{position:absolute;inset:0 100% 0 0}
           </style>
-          <h1>COLE · OpenLine Receipt (Lean 1.4L)</h1>
-          <div class="grid">
-            <div class="tile">
-              <div class="muted">Coherence Signals</div>
-              <div class="small">κ <b id="kappa">—</b> · Δhol <b id="dhol">—</b></div>
-              <div class="small">UCR <b id="ucr">—</b> · ES <b id="es">—</b></div>
-              <div class="small">cycles <b id="cycles">—</b> · X <b id="xfront">—</b></div>
-              <div class="small">status <b id="status" class="tag">—</b></div>
+          <div class="wrap">
+            <h1 style="margin:0 0 4px">COLE · OpenLine Receipt</h1>
+            <p class="muted" style="margin:0 0 8px">“Receipts, not rhetoric.” This page reads <code>docs/receipt.latest.json</code> and <code>docs/guard.14l.json</code>.</p>
+            <div class="pill" id="pill" hidden><span class="dot" id="dot"></span><span id="ptxt">status</span></div>
+
+            <div class="grid" id="grid"></div>
+
+            <div class="card">
+              <div class="row">
+                <a class="btn" href="./receipt.latest.json" download>Download receipt</a>
+                <a class="btn" href="./history/">History</a>
+              </div>
+              <div style="margin-top:8px" class="muted" id="why">—</div>
+              <div style="margin-top:4px" class="muted" id="fix">—</div>
+            </div>
+
+            <div class="card" id="bars" style="display:none">
+              <div class="muted" style="margin-bottom:6px">Signals at a glance</div>
+              <div style="display:grid;grid-template-columns:80px 1fr 60px;gap:8px;align-items:center">
+                <div class="muted">κ</div><div class="bar"><div class="fill" id="bk"></div></div><div id="vk" style="text-align:right">—</div>
+                <div class="muted">Δhol</div><div class="bar"><div class="fill" id="bd"></div></div><div id="vd" style="text-align:right">—</div>
+              </div>
             </div>
           </div>
           <script>
           (async()=>{
-            try{
-              const u = new URL('./receipt.latest.json', location.href);
-              u.searchParams.set('v', Date.now().toString());
-              const r = await fetch(u,{cache:'no-store'}); if(!r.ok) return;
-              const j = await r.json();
-              const of=(j.openline_frame||{}), d=(of.digest||{}), t=(of.telem||{}), latest=(j.temporal&&j.temporal.latest)||{};
-              const k = (typeof latest.kappa==='number') ? latest.kappa : t.kappa_eff;
-              const h = (typeof latest.delta_hol==='number') ? latest.delta_hol : t.delta_hol;
-              const S=v=>Number.isFinite(+v)?(+v).toFixed(3):'—';
-              const E=(id,v)=>{const e=document.getElementById(id); if(e) e.textContent=v;};
-              E('kappa', S(k)); E('dhol', S(h)); E('cycles', d.cycle_plus ?? '—'); E('xfront', d.x_frontier ?? '—');
-              E('ucr', S(d.ucr)); E('es', S(t.evidence_strength));
-              const st = document.getElementById('status'); const s=j.status||'green';
-              st.textContent = s.toUpperCase();
-              st.style.background = s==='red' ? '#7f1d1d' : (s==='amber' ? '#a16207' : '#14532d');
-            }catch(e){}
+            const $=id=>document.getElementById(id); const grid=$('grid');
+            const color=s=>s==='red'?'#dc2626':(s==='amber'?'#f59e0b':'#16a34a');
+            const tile=(label,val,hint,cls)=>{const d=document.createElement('div');d.className='card';
+              d.innerHTML=`<div class="kpi"><div class="lamp ${cls||'mut'}"></div><div class="big">${val}</div></div>
+              <div class="muted">${label}<br><span style="font-size:11px">${hint||''}</span></div>`; return d;};
+            let rec=null; try{const u=new URL('./receipt.latest.json',location.href);u.searchParams.set('v',Date.now());
+              const r=await fetch(u,{cache:'no-store'}); rec=await r.json();}catch{}
+            if(!rec){ grid.appendChild(tile('No receipt found','—','Push docs/receipt.latest.json','warn')); return; }
+
+            const f=rec.openline_frame||{}, d=f.digest||{}, t=f.telem||{}, latest=(rec.temporal&&rec.temporal.latest)||{};
+            const k=+(t.kappa_eff ?? latest.kappa ?? 0), dh=+(t.delta_hol ?? latest.delta_hol ?? 0);
+            const u=+(d.ucr ?? 0), es=+(t.evidence_strength ?? 0), cyc=+(d.cycle_plus ?? 0), X=+(d.x_frontier ?? 0);
+
+            const status=(rec.status||'').toLowerCase() ||
+              ((cyc>0)?'red':
+               ((k>=0.75 && u>=0.40 && es<0.25)||(dh>=0.35 && t.del_suspect)?'red':
+                ((k>=0.75||dh>=0.35||u>=0.40)?'amber':'green')));
+
+            $('pill').hidden=false; document.getElementById('dot').style.background=color(status); document.getElementById('ptxt').textContent=status.toUpperCase();
+
+            grid.appendChild(tile('κ (stress)', k.toFixed(3),'Density vs structure', k>=0.85?'bad':(k>=0.70?'warn':'ok')));
+            grid.appendChild(tile('Δhol (drift)', dh.toFixed(3),'Path mismatch (EWMA JSD)', dh>=0.35?'warn':'ok'));
+            grid.appendChild(tile('UCR', (u*100).toFixed(0)+'%','Unsupported-claim ratio', u>=0.40?'warn':'ok'));
+            grid.appendChild(tile('ES', (es*100).toFixed(0)+'%','Evidence strength', es<0.25?'warn':'ok'));
+            grid.appendChild(tile('Cycles', String(cyc),'cycle⁺ > 0 → RED', cyc>0?'bad':'ok'));
+            grid.appendChild(tile('X (contradictions)', String(X),'Unresolved contradictions', X>0?'warn':'ok'));
+
+            // Friendly messages (even when green)
+            let why='All guardrails within thresholds';
+            let fix='No action needed — receipts are saving to docs/receipt.latest.json.';
+            if (cyc>0){ why='Circular reasoning detected'; fix='Break the loop; add evidence or restructure claims.'; }
+            else if (dh>=0.35 && t.del_suspect){ why='Path drift with potential silent deletion'; fix='Add a resolution/handling line for dropped contradictions.'; }
+            else if (k>=0.75 && u>=0.40 && es<0.25){ why='High stress + unsupported claims + weak evidence'; fix='Place citations or “according to…” near claims.'; }
+            else if (k>=0.75){ why='Elevated stress (κ high)'; fix='Shorten or add structure/support so S* rises.'; }
+            else if (dh>=0.35){ why='Path drift (Δhol high)'; fix='Stabilize reasoning across turns; avoid silent rewrites.'; }
+            else if (u>=0.40){ why='Many claims lack nearby support'; fix='Put evidence within ±1 sentence of each claim.'; }
+            $('why').textContent=why; $('fix').textContent=fix;
+
+            // Bars
+            const bars=document.getElementById('bars'); if(bars){
+              const bk=document.getElementById('bk'), bd=document.getElementById('bd');
+              const vk=document.getElementById('vk'), vd=document.getElementById('vd');
+              bars.style.display='block';
+              bk.style.background=color(status); bd.style.background=color(status);
+              bk.style.right=(100-Math.min(100,(k/0.75)*100))+'%';
+              bd.style.right=(100-Math.min(100,(dh/0.35)*100))+'%';
+              vk.textContent=k.toFixed(3); vd.textContent=dh.toFixed(3);
+            }
           })();
           </script>
           HTML
@@ -139,6 +199,15 @@ jobs:
           ts=$(date +%s)
           cp docs/receipt.latest.json docs/history/receipt-$ts.json || true
 
+      # Build a simple history index
+      - name: Build history index
+        run: |
+          out="docs/history/index.html"
+          echo '<!doctype html><meta charset="utf-8"><title>History</title><style>body{font:15px/1.5 system-ui;margin:18px} a{display:block;margin:4px 0}</style><h1>Receipt History</h1>' > "$out"
+          for f in $(ls -1t docs/history/receipt-*.json 2>/dev/null | sed 's#docs/history/##'); do
+            echo "<a href=\"$f\">$f</a>" >> "$out"
+          done
+
       # Rebase-safe commit to avoid "remote contains work you do not have locally"
       - name: Commit docs & state back to repo
         env:
@@ -147,7 +216,6 @@ jobs:
           set -e
           git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-
           git add -A docs .state || true
           if git diff --staged --quiet; then
             echo "No changes to commit"
