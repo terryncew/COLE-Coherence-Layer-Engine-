@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<title>COLE · OpenLine Receipt (OLR/1.4L)</title>
+<title>COLE · OpenLine Receipt (OLR/1.5)</title>
 <style>
   :root{
     --bg:#ffffff; --ink:#0b0b10; --muted:#6a6f7a; --line:#e9ecf2; --tile:#ffffff;
@@ -53,6 +53,9 @@
   .warnbox{background:#fff7ed;border:1px solid #ffedd5;color:#7c2d12;padding:10px;border-radius:10px}
   .redbox{background:#fef2f2;border:1px solid #fee2e2;color:#7f1d1d;padding:10px;border-radius:10px}
   .whitebox{background:#f3f4f6;border:1px solid #e5e7eb;color:#111827;padding:10px;border-radius:10px}
+  .dials{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+  .dial{font-size:12px;border:1px solid var(--chipline);background:var(--chip);border-radius:8px;padding:6px 8px;display:flex;gap:6px;align-items:center}
+  .dial .p{width:6px;height:6px;border-radius:50%}
 </style>
 </head>
 <body>
@@ -60,13 +63,11 @@
   <header>
     <div>
       <h1>COLE · OpenLine Receipt</h1>
-      <p class="sub">Lean 1.4L · “Receipts, not rhetoric.” Reads <code>docs/receipt.latest.json</code>, <code>docs/guard.14l.json</code> and <code>docs/policy.json</code>.</p>
+      <p class="sub">OLR/1.5 · “Receipts, not rhetoric.” Reads <code>docs/receipt.latest.json</code>. Dials render only on AMBER/RED.</p>
     </div>
     <div class="pill" id="statusPill" hidden>
       <span class="dot" id="statusDot"></span>
       <span id="statusText">status</span>
-      <span style="font-weight:600;color:#6b7280">·</span>
-      <span id="hazardText" title="p_review (hazard)">—</span>
     </div>
   </header>
 
@@ -94,6 +95,15 @@
         <div id="barDVal" style="width:56px;text-align:right">—</div>
       </div>
 
+      <div id="dialsCard" class="card" style="margin-top:10px; padding:8px; display:none">
+        <div class="glyphTitle">Dials (q8 → [-1..+1])</div>
+        <div class="dials">
+          <div class="dial"><span class="p" id="pGrad"></span><span>∂Φ/∂κ:</span><span id="gradTxt">—</span></div>
+          <div class="dial"><span class="p" id="pCurv"></span><span>d²Φ/dt²:</span><span id="curvTxt">—</span></div>
+          <div class="dial"><span class="p" id="pFresh"></span><span>freshness:</span><span id="freshTxt">—</span></div>
+        </div>
+      </div>
+
       <div class="row" style="margin-top:10px">
         <a class="btn" href="./receipt.latest.json" download>Download receipt</a>
         <a class="btn" href="./history/">History</a>
@@ -112,6 +122,7 @@
         <div class="muted">Updated</div><div id="updated">—</div>
         <div class="muted">Why</div><div id="why">—</div>
         <div class="muted">Try next</div><div id="fix">—</div>
+        <div class="muted">Policy</div><div id="pol">—</div>
       </div>
     </div>
   </section>
@@ -121,13 +132,13 @@
     <div class="muted">Value (policy-aware, est.)</div>
     <div class="row" style="margin-top:6px">
       <span class="chip" id="savedChip">Saved minutes/run: —</span>
-      <span class="chip">Goodhart guard: κ + Δhol + UCR</span>
+      <span class="chip">Goodhart guard: κ + Δhol</span>
     </div>
   </section>
 
   <!-- Rules -->
   <section class="card" style="margin-top:10px">
-    <div class="muted" id="rules">Rules: loading…</div>
+    <div class="muted" id="rules">Rules: GREEN within thresholds; AMBER if any one is high; RED on cycles/contradictions or near snap.</div>
   </section>
 
   <p class="note" style="margin-top:8px">Tip: Keep citations near claims; avoid silent deletions; stable paths beat long monologues.</p>
@@ -137,13 +148,63 @@
 (async function(){
   const $ = id => document.getElementById(id);
   const grid = $('grid');
-  const pill=$('statusPill'), dot=$('statusDot'), txt=$('statusText'), haz=$('hazardText');
-  const glyph=$('glyph'), leg=$('legend');
+  const pill=$('statusPill'), dot=$('statusDot'), txt=$('statusText');
+  const glyph=$('glyph');
   const barK=$('barK'), barD=$('barD'), barKTick=$('barKTick'), barDTick=$('barDTick');
   const barKVal=$('barKVal'), barDVal=$('barDVal');
   const msgBox=$('msgBox'), warnBox=$('warnBox'), redBox=$('redBox'), whiteBox=$('whiteBox');
   const savedChip=$('savedChip');
 
+  const polEl=$('pol');
+  const dialsCard=$('dialsCard'), gradTxt=$('gradTxt'), curvTxt=$('curvTxt'), freshTxt=$('freshTxt');
+  const pGrad=$('pGrad'), pCurv=$('pCurv'), pFresh=$('pFresh');
+
+  function color(status){ return status==='red' ? '#dc2626' : (status==='amber' ? '#f59e0b' : (status==='green' ? '#16a34a' : '#9aa3b2')); }
+  function clamp01(x){ return Math.max(0, Math.min(1, +x||0)); }
+  function num(v){ return Number.isFinite(+v) ? +v : 0; }
+  function q8_to_s1(b){ // q8 signed: [0..255] → [-1..+1] (128≈0)
+    const x = (Number(b)-128)/127;
+    return Math.max(-1, Math.min(1, x));
+  }
+
+  async function jget(path){
+    try{ const u=new URL(path,location.href); u.searchParams.set('v',Date.now()); const r=await fetch(u,{cache:'no-store'}); return r.ok? r.json(): null; }
+    catch{ return null; }
+  }
+
+  const rec = await jget('./receipt.latest.json');
+
+  if(!rec){
+    const c=document.createElement('div'); c.className='card';
+    c.innerHTML='<div class="kpi"><div class="lamp warnd"></div><div class="big">—</div></div><div class="muted">No receipt found. Add <code>docs/receipt.latest.json</code>.</div>';
+    grid.appendChild(c);
+    $('rules').textContent='No receipt found. Run your workflow to generate docs/receipt.latest.json.';
+    return;
+  }
+
+  // v1.5 layout
+  const attrs = rec.attrs || {};
+  const signals = rec.signals || {};
+  const telem = (rec.telem || {});
+  const guards = rec.guards || rec.digest || {}; // be liberal: some emitters still use digest.*
+  const policy = rec.policy || {};
+
+  // status + pill
+  const status = String(attrs.status || rec.status || 'white').toLowerCase();
+  txt.textContent = status.toUpperCase();
+  const dotClass = status==='red'?'badd':(status==='amber'?'warnd':(status==='green'?'okd':'whited'));
+  document.getElementById('statusDot').className='dot '+dotClass;
+  pill.hidden=false;
+
+  // signals
+  const k   = num(signals.kappa);
+  const dhol= num(signals.dhol);
+  const ucr = num(guards.ucr);
+  const es  = num(signals.evidence_strength);
+  const cyc = num(guards.cycles || guards.cycle_plus);
+  const X   = num(guards.contradictions || guards.x_frontier);
+
+  // tiles
   function tile(label, value, hint, cls){
     const c=document.createElement('div'); c.className='card';
     const row=document.createElement('div'); row.className='kpi';
@@ -152,103 +213,68 @@
     const cap=document.createElement('div'); cap.innerHTML = `<div class="muted">${label}</div><div class="muted" style="font-size:11px">${hint||''}</div>`;
     row.appendChild(lamp); row.appendChild(b); c.appendChild(row); c.appendChild(cap); return c;
   }
-  const cfgDefault={tau_k:.75,tau_hol:.35,ucr_min:.40,es_min:.25};
-  const polDefault={argue_mins:15,review_mins:5,daily_review_budget:60,bands:{green:[0,0.20],amber_monitor:[0.20,0.35],amber_investigate:[0.35,0.80]}};
 
-  async function jget(path){
-    try{ const u=new URL(path,location.href); u.searchParams.set('v',Date.now()); const r=await fetch(u,{cache:'no-store'}); return r.ok? r.json(): null; }
-    catch{ return null; }
-  }
+  // default thresholds if no policy-aware front-end
+  const cfg = {tau_k:.75, tau_hol:.35, ucr_min:.40, es_min:.25};
 
-  const rec = await jget('./receipt.latest.json');
-  const cfg = await jget('./guard.14l.json') || cfgDefault;
-  const pol = await jget('./policy.json') || polDefault;
-
-  if(!rec){
-    grid.appendChild(tile('No receipt found','—','Add docs/receipt.latest.json','warn'));
-    $('rules').textContent='No receipt found. Run your workflow to generate docs/receipt.latest.json.';
-    return;
-  }
-
-  // numbers
-  const of=rec.openline_frame||{}, t=of.telem||{}, d=of.digest||{}, latest=(rec.temporal&&rec.temporal.latest)||{};
-  const num = v => (Number.isFinite(+v) ? +v : 0);
-  const k   = num(t.kappa_eff ?? latest.kappa);
-  const dhol= num(t.delta_hol ?? latest.delta_hol);
-  const ucr = num(d.ucr);
-  const es  = num(t.evidence_strength);
-  const cyc = num(d.cycle_plus);
-  const X   = num(d.x_frontier);
-  const hazard = ((rec.hazard||{}).p_review!=null) ? +rec.hazard.p_review : null;
-  const kWin = ((rec.hazard||{}).k_window!=null) ? +rec.hazard.k_window : 0;
-
-  // status + pill
-  const status = String(rec.badge||rec.status||'white').toLowerCase();
-  const color = s => s==='red' ? '#dc2626' : (s==='amber' ? '#f59e0b' : (s==='green' ? '#16a34a' : '#9aa3b2'));
-  txt.textContent = status.toUpperCase();
-  dot.className='dot '+(status==='red'?'badd':(status==='amber'?'warnd':(status==='green'?'okd':'whited')));
-  haz.textContent = (hazard==null? '—' : hazard.toFixed(2));
-  pill.hidden=false;
-
-  // tiles (six only)
   const cK = v => (v>=cfg.tau_k?'warn':'ok');
   const cD = v => (v>=cfg.tau_hol?'warn':'ok');
   const cU = v => (v>=cfg.ucr_min?'warn':'ok');
   const cE = v => (v< cfg.es_min?'warn':'ok');
-  grid.appendChild(tile('κ (stress)', k.toFixed(3), 'Density vs structure', cK(k)));
-  grid.appendChild(tile('Δhol (drift)', dhol.toFixed(3), 'Path mismatch (EWMA JSD)', cD(dhol)));
-  grid.appendChild(tile('UCR', (ucr*100).toFixed(0)+'%', 'Unsupported-claim ratio', cU(ucr)));
-  grid.appendChild(tile('ES', (es*100).toFixed(0)+'%', 'Evidence strength', cE(es)));
-  grid.appendChild(tile('Cycles', String(cyc), 'cycle⁺ > 0 → RED', (cyc>0?'bad':'ok')));
-  grid.appendChild(tile('X (contradictions)', String(X), 'Unresolved contradictions', (X>0?'warn':'ok')));
+
+  grid.appendChild(tile('κ (stress)', isFinite(k)?k.toFixed(3):'—', 'Density vs structure', cK(k)));
+  grid.appendChild(tile('Δhol (drift)', isFinite(dhol)?dhol.toFixed(3):'—', 'Path mismatch (JSD/EWMA)', cD(dhol)));
+  grid.appendChild(tile('UCR', isFinite(ucr)?(ucr*100).toFixed(0)+'%':'—', 'Unsupported-claim ratio', cU(ucr)));
+  grid.appendChild(tile('ES', isFinite(es)?(es*100).toFixed(0)+'%':'—', 'Evidence strength', cE(es)));
+  grid.appendChild(tile('Cycles', String(cyc||0), 'cycle⁺ > 0 → RED', (cyc>0?'bad':'ok')));
+  grid.appendChild(tile('X (contradictions)', String(X||0), 'Unresolved contradictions', (X>0?'warn':'ok')));
 
   // updated
-  $('updated').textContent = new Date((of.t_logical? of.t_logical*1000 : Date.now())).toLocaleString();
+  const tstamp = attrs.ts ? Date.parse(attrs.ts) : Date.now();
+  $('updated').textContent = new Date(tstamp).toLocaleString();
 
   // Why / Try next
   let why='', fix='';
   if (status==='white'){
     whiteBox.hidden=false; msgBox.hidden=true; warnBox.hidden=true; redBox.hidden=true;
-    why = 'Warming up (insufficient history)';
-    fix = 'Generate a few more receipts to calibrate the baseline.';
+    why = 'Warming up (insufficient history)'; fix = 'Generate a few more receipts to calibrate the baseline.';
   } else if (status==='green'){
     msgBox.hidden=false; whiteBox.hidden=true; warnBox.hidden=true; redBox.hidden=true;
-    why = 'All guardrails within thresholds';
-    fix = 'No action needed';
+    why = 'All guardrails within thresholds'; fix = 'No action needed';
   } else if (status==='amber'){
     warnBox.hidden=false; whiteBox.hidden=true; msgBox.hidden=true; redBox.hidden=true;
-    if (k>=cfg.tau_k) { why = 'Elevated stress (κ high)'; fix='Shorten or add structure/support so S* rises.'; }
+    if (k>=cfg.tau_k) { why='Elevated stress (κ high)'; fix='Shorten or add structure/support so S* rises.'; }
     else if (dhol>=cfg.tau_hol){ why='Path drift (Δhol high)'; fix='Stabilize reasoning across turns; avoid silent rewrites.'; }
     else if (ucr>=cfg.ucr_min){ why='Many claims lack nearby support'; fix='Place an evidence sentence or citation within ±1 sentence.'; }
   } else if (status==='red'){
     redBox.hidden=false; whiteBox.hidden=true; msgBox.hidden=true; warnBox.hidden=true;
     if (cyc>0){ why='Circular reasoning detected (cycle⁺>0)'; fix='Break the loop; add external evidence or restructure claims.'; }
-    else if (dhol>=cfg.tau_hol && t.del_suspect){ why='Path drift with potential silent deletion'; fix='Add a resolution/handling sentence for removed contradictions.'; }
-    else if (k>=cfg.tau_k && ucr>=cfg.ucr_min && es<cfg.es_min){ why='High κ + unsupported claims + weak evidence'; fix='Add citations or “according to…” near claims.'; }
+    else if (dhol>=cfg.tau_hol){ why='Path drift + possible silent deletion'; fix='Add a resolution/handling sentence for removed contradictions.'; }
+    else if (k>=cfg.tau_k && ucr>=cfg.ucr_min){ why='High κ + unsupported claims'; fix='Add citations or “according to…” near claims.'; }
   }
   $('why').textContent = why || '—';
   $('fix').textContent = fix || '—';
 
   // bars (0..1; tick at thresholds)
   function setBar(bar, tick, value, thresh){
-    const fill = Math.max(0, Math.min(1, value));
+    const fill = clamp01(value);
     bar.style.color = color(status);
     bar.querySelector('.fill').style.width = (fill*100).toFixed(1)+'%';
-    tick.style.left = (Math.max(0, Math.min(1, thresh))*100).toFixed(1)+'%';
+    tick.style.left = (clamp01(thresh)*100).toFixed(1)+'%';
   }
-  setBar(barK, barKTick, k,   cfg.tau_k||.75);
-  setBar(barD, barDTick, dhol,cfg.tau_hol||.35);
-  barKVal.textContent = k.toFixed(3);
-  barDVal.textContent = dhol.toFixed(3);
+  setBar(barK, barKTick, k,   cfg.tau_k);
+  setBar(barD, barDTick, dhol,cfg.tau_hol);
+  barKVal.textContent = isFinite(k)?k.toFixed(3):'—';
+  barDVal.textContent = isFinite(dhol)?dhol.toFixed(3):'—';
 
-  // glyph
+  // glyph (same geometry, using the 6 axes)
   const axes = [
-    {label:'κ',     val: Math.max(0, Math.min(1, (cfg.tau_k? (k/(cfg.tau_k||1)) : 0)))},
-    {label:'Δhol',  val: Math.max(0, Math.min(1, (cfg.tau_hol? (dhol/(cfg.tau_hol||1)) : 0)))},
-    {label:'UCR',   val: Math.max(0, Math.min(1, (cfg.ucr_min? (ucr/(cfg.ucr_min||1)) : 0)))},
-    {label:'low ES',val: Math.max(0, Math.min(1, (cfg.es_min? ((cfg.es_min - es)/(cfg.es_min||1)) : 0)))},
-    {label:'cycles',val: cyc>0 ? 1 : 0},
-    {label:'X',     val: Math.max(0, Math.min(1, X/3))}
+    {label:'κ',     val: cfg.tau_k ? clamp01(k/(cfg.tau_k||1)) : 0},
+    {label:'Δhol',  val: cfg.tau_hol ? clamp01(dhol/(cfg.tau_hol||1)) : 0},
+    {label:'UCR',   val: cfg.ucr_min ? clamp01(ucr/(cfg.ucr_min||1)) : 0},
+    {label:'low ES',val: cfg.es_min ? clamp01((cfg.es_min - (es||0))/(cfg.es_min||1)) : 0},
+    {label:'cycles',val: (cyc>0 ? 1 : 0)},
+    {label:'X',     val: clamp01((X||0)/3)}
   ];
   const cx=60, cy=60, R=48, N=axes.length;
   for(let r=1;r<=3;r++){
@@ -276,26 +302,34 @@
   poly.setAttribute('d', path);
   poly.setAttribute('fill', status==='red'?'#fee2e2':(status==='amber'?'#fff3cd':(status==='green'?'#ecfdf5':'#f3f4f6')));
   poly.setAttribute('stroke', color(status)); poly.setAttribute('stroke-width','1.6'); glyph.appendChild(poly);
-  const hub=document.createElementNS('http://www.w3.org/2000/svg','circle');
-  hub.setAttribute('cx',cx); hub.setAttribute('cy',cy); hub.setAttribute('r',2.1); hub.setAttribute('fill',color(status)); glyph.appendChild(hub);
+  const hub=document.createElementNS('http://www.w3.org/200svg','circle');
+  const hub2=document.createElementNS('http://www.w3.org/2000/svg','circle');
+  hub2.setAttribute('cx',cx); hub2.setAttribute('cy',cy); hub2.setAttribute('r',2.1); hub2.setAttribute('fill',color(status)); glyph.appendChild(hub2);
 
-  // Value: saved minutes/run (expected)
-  function expectedSavedMinutes(policy, p){
-    const A = Number(policy.argue_mins||15), R = Number(policy.review_mins||5);
-    if (!Number.isFinite(p)) return null;
-    // simple expectation: if review triggers with prob p, expected net saved per run:
-    // (A - R) * p  (only review when hazard is high)
-    const saved = Math.max(0, (A-R)) * Math.max(0, Math.min(1, p));
-    return Math.round(saved*10)/10;
+  // Dials (only on AMBER/RED and only when present)
+  const dials = (telem.dials || {});
+  const hasDials = (status!=='green') && ('dphi_dk_q8' in dials) && ('d2phi_dt2_q8' in dials) && ('fresh_ratio_q8' in dials);
+  if (hasDials){
+    const g = q8_to_s1(dials.dphi_dk_q8);
+    const c = q8_to_s1(dials.d2phi_dt2_q8);
+    const f = q8_to_s1(dials.fresh_ratio_q8);
+    gradTxt.textContent = g.toFixed(2);
+    curvTxt.textContent = c.toFixed(2);
+    freshTxt.textContent = f.toFixed(2);
+    pGrad.style.background = g>=0 ? 'var(--ok)' : 'var(--warn)';
+    pCurv.style.background = c>=0 ? 'var(--ok)' : 'var(--warn)';
+    pFresh.style.background = f>=0 ? 'var(--ok)' : 'var(--warn)';
+    dialsCard.style.display = 'block';
   }
-  const saved = expectedSavedMinutes(pol, hazard==null?0:hazard);
-  savedChip.textContent = 'Saved minutes/run: ' + (saved==null? '—' : saved.toFixed(1));
 
-  // Rules text with thresholds and WHITE definition
-  $('rules').textContent =
-    `Rules: RED if cycle⁺>0; or (Δhol≥${cfg.tau_hol} & del_suspect); or (κ≥${cfg.tau_k} & UCR≥${cfg.ucr_min} & ES<${cfg.es_min}). ` +
-    `AMBER if any one is high. GREEN when within thresholds for the recent window. ` +
-    `WHITE = warm-up (not enough history yet).`;
+  // Value: saved minutes/run (very rough; use hazard if present)
+  const hazard = num((rec.hazard||{}).p_review);
+  const A=15, R=5;
+  const saved = Math.max(0, (A-R)) * Math.max(0, Math.min(1, hazard||0));
+  savedChip.textContent = 'Saved minutes/run: ' + (isFinite(saved)? saved.toFixed(1) : '—');
+
+  // policy label
+  polEl.textContent = policy.policy_id ? `${policy.policy_id}${policy.policy_hash ? ' · ' + policy.policy_hash.slice(0,14)+'…' : ''}` : '—';
 })();
 </script>
 </body>
