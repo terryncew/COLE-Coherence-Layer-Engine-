@@ -1,0 +1,15 @@
+name: receipt-v15
+on:
+  push: { paths: ["docs/**","scripts/**","src/**",".github/workflows/receipt-v15.yml"] }
+  pull_request: {}
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Python
+        uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - name: Attach dials if COLE
+        run: |
+          if [ -f "scripts/apply_dials.py" ]; then python3 scripts/apply_dials.py || true; fi
