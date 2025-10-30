@@ -1,208 +1,106 @@
 <!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<title>COLE · OpenLine Receipt (OLR/1.5)</title>
+<meta charset="utf-8">
+<title>OpenLine · Nano Receipt</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
 <style>
-  :root{--bg:#ffffff;--ink:#0b0b10;--muted:#6a6f7a;--line:#e9ecf2;--tile:#ffffff;--ok:#16a34a;--warn:#f59e0b;--bad:#dc2626;--chip:#f4f6fb;--chipline:#e6eaf3;}
-  *{box-sizing:border-box}
-  html,body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 -apple-system,system-ui,Segoe UI,Roboto,Inter,Helvetica,Arial,sans-serif}
-  .wrap{max-width:980px;margin:0 auto;padding:18px}
-  header{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:10px}
-  h1{font-size:22px;margin:0}
-  .sub{font-size:12px;color:var(--muted);margin:4px 0 0}
-  .grid{display:grid;grid-template-columns:repeat(6,1fr);gap:10px}
-  @media (max-width:900px){.grid{grid-template-columns:repeat(3,1fr)}}
-  @media (max-width:560px){.grid{grid-template-columns:repeat(2,1fr)}}
-  .card{background:var(--tile);border:1px solid var(--line);border-radius:14px;padding:12px}
-  .kpi{display:flex;align-items:center;gap:10px}
-  .lamp{width:12px;height:12px;border-radius:50%}
-  .ok{background:var(--ok)} .warn{background:var(--warn)} .bad{background:var(--bad)} .mutelamp{background:#c7c7cc}
-  .big{font-size:20px;font-weight:700}
+  :root{
+    --bg:#fff; --ink:#0b0b10; --muted:#6a6f7a; --line:#e9ecf2;
+    --ok:#16a34a; --warn:#f59e0b; --bad:#dc2626;
+  }
+  *{box-sizing:border-box} html,body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 -apple-system,system-ui,Segoe UI,Inter,Helvetica,Arial}
+  .wrap{max-width:620px;margin:0 auto;padding:14px}
+  .card{border:1px solid var(--line);border-radius:12px;padding:12px;background:#fff}
+  .row{display:flex;align-items:center;gap:10px}
+  .sp{justify-content:space-between}
+  .pill{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:999px;padding:6px 10px;font-weight:600}
+  .dot{width:10px;height:10px;border-radius:50%}
+  .dot.g{background:var(--ok)} .dot.a{background:var(--warn)} .dot.r{background:var(--bad)} .dot.w{background:#9aa3b2}
+  .bar{position:relative;height:8px;border-radius:999px;border:1px solid var(--line);background:#f6f8fb;overflow:hidden}
+  .fill{position:absolute;inset:0 auto 0 0;width:0}
+  .label{min-width:42px;color:var(--muted)}
+  .num{min-width:54px;text-align:right}
   .muted{color:var(--muted);font-size:12px}
-  .row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
-  .btn{display:inline-block;background:#0b0b10;color:#fff;text-decoration:none;border:1px solid var(--line);padding:10px 12px;border-radius:10px;font-weight:700}
-  .pill{display:inline-flex;align-items:center;gap:10px;padding:8px 12px;border-radius:999px;border:1px solid var(--line);background:var(--chip);font-weight:700}
-  .pill .dot{width:10px;height:10px;border-radius:50%}
-  .okd{background:var(--ok)} .warnd{background:var(--warn)} .badd{background:var(--bad)} .whited{background:#9aa3b2}
-  .kv{display:grid;grid-template-columns:auto 1fr;gap:6px 10px;align-items:center}
-  .divider{height:1px;background:var(--line);margin:10px 0}
-  .barrow{display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:center}
-  .bar{position:relative;width:100%;height:10px;border-radius:999px;background:#f3f5f9;border:1px solid var(--line);overflow:hidden}
-  .bar .fill{position:absolute;left:0;top:0;bottom:0;background:currentColor;opacity:.9}
-  .bar .tick{position:absolute;top:-2px;bottom:-2px;width:2px;background:#9aa3b2}
-  .glyphTitle{font-size:12px;color:var(--muted);margin:0 0 6px}
-  .svgbox{width:100%;aspect-ratio:1/1;display:block}
-  .legend{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;font-size:12px;color:var(--muted)}
-  .chip{background:var(--chip);border:1px solid var(--chipline);border-radius:999px;padding:.25em .6em}
-  .twoCols{display:grid;grid-template-columns:1.1fr .9fr;gap:10px}
-  @media (max-width:860px){.twoCols{grid-template-columns:1fr}}
-  .note{font-size:12px;color:var(--muted)}
-  .success{background:#ecfdf5;border:1px solid #d1fae5;color:#065f46;padding:10px;border-radius:10px}
-  .warnbox{background:#fff7ed;border:1px solid #ffedd5;color:#7c2d12;padding:10px;border-radius:10px}
-  .redbox{background:#fef2f2;border:1px solid #fee2e2;color:#7f1d1d;padding:10px;border-radius:10px}
-  .whitebox{background:#f3f4f6;border:1px solid #e5e7eb;color:#111827;padding:10px;border-radius:10px}
-  .dials{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
-  .dial{font-size:12px;border:1px solid var(--chipline);background:var(--chip);border-radius:8px;padding:6px 8px;display:flex;gap:6px;align-items:center}
-  .dial .p{width:6px;height:6px;border-radius:50%}
+  .grid{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center}
+  a.btn{border:1px solid var(--line);border-radius:10px;padding:8px 10px;text-decoration:none;color:var(--ink)}
 </style>
-</head>
-<body>
+
 <div class="wrap">
-  <header>
-    <div>
-      <h1>COLE · OpenLine Receipt</h1>
-      <p class="sub">OLR/1.5 · “Receipts, not rhetoric.” Reads <code>receipt.latest.json</code> (root or <code>/docs</code>). Dials render only on AMBER/RED.</p>
+  <div class="row sp" style="margin-bottom:8px">
+    <div class="row" style="gap:8px">
+      <div class="pill"><span id="dot" class="dot w"></span><span id="badge">STATUS</span></div>
+      <div class="muted" id="updated">—</div>
     </div>
-    <div class="pill" id="statusPill" hidden><span class="dot" id="statusDot"></span><span id="statusText">status</span></div>
-  </header>
+    <a class="btn" id="dl" download>Download JSON</a>
+  </div>
 
-  <section class="twoCols" style="margin-top:10px">
-    <div class="card">
-      <div class="glyphTitle">Coherence glyph (risk grows outward)</div>
-      <svg class="svgbox" viewBox="0 0 120 120" role="img" aria-label="coherence glyph" id="glyph"></svg>
-      <div class="legend" id="legend"></div>
-    </div>
-
-    <div class="card">
-      <div class="glyphTitle">Signals at a glance</div>
-      <div class="barrow" style="margin-top:2px"><div style="width:52px;color:#6a6f7a">κ</div><div class="bar" id="barK"><div class="fill"></div><div class="tick" id="barKTick"></div></div><div id="barKVal" style="width:56px;text-align:right">—</div></div>
-      <div class="barrow" style="margin-top:6px"><div style="width:52px;color:#6a6f7a">Δhol</div><div class="bar" id="barD"><div class="fill"></div><div class="tick" id="barDTick"></div></div><div id="barDVal" style="width:56px;text-align:right">—</div></div>
-
-      <div class="row" style="margin-top:10px"><a class="btn" id="dl" href="#" download>Download receipt</a><a class="btn" id="hist" href="./history/">History</a></div>
-      <div class="divider"></div>
-      <div id="whiteBox" class="whitebox" hidden>Warming up: the first few runs calibrate a baseline. Badge turns green/amber/red after a short history window.</div>
-      <div id="msgBox" class="success" hidden>All guardrails within thresholds. Looks good — no action needed.</div>
-      <div id="warnBox" class="warnbox" hidden>Heads up: something needs a quick look. See “Why” and “Try next”.</div>
-      <div id="redBox"  class="redbox"  hidden>Blocked: guardrails tripped. Fix the issue and re-run.</div>
-      <div class="divider"></div>
-      <div class="kv">
-        <div class="muted">Updated</div><div id="updated">—</div>
-        <div class="muted">Why</div><div id="why">—</div>
-        <div class="muted">Try next</div><div id="fix">—</div>
-        <div class="muted">Source</div><div id="srcDisp">—</div>
+  <div class="card">
+    <div class="grid">
+      <div class="row" style="gap:10px">
+        <div class="label">κ</div>
+        <div class="bar"><div id="kfill" class="fill"></div></div>
       </div>
+      <div class="num" id="knum">—</div>
+
+      <div class="row" style="gap:10px">
+        <div class="label">Δhol</div>
+        <div class="bar"><div id="dfill" class="fill"></div></div>
+      </div>
+      <div class="num" id="dnum">—</div>
     </div>
-  </section>
-
-  <section class="card" style="margin-top:10px">
-    <div class="muted" id="rules">Rules: GREEN within thresholds; AMBER if any one is high; RED on cycles/contradictions.</div>
-  </section>
-
-  <p class="note" style="margin-top:8px">Tip: Keep citations near claims; avoid silent deletions; stable paths beat long monologues.</p>
+    <div class="row sp" style="margin-top:10px">
+      <div class="muted" id="bytes">—</div>
+      <div class="muted">Green ≤640 B · Amber/Red ≤800 B</div>
+    </div>
+  </div>
 </div>
 
 <script>
 (async function(){
   const $ = id => document.getElementById(id);
-  const glyph=$('glyph'), barK=$('barK'), barD=$('barD'), barKTick=$('barKTick'), barDTick=$('barDTick');
-  const barKVal=$('barKVal'), barDVal=$('barDVal');
-  const pill=$('statusPill'), dot=$('statusDot'), txt=$('statusText');
-  const srcDisp=$('srcDisp');
-
-  function color(status){ return status==='red' ? '#dc2626' : (status==='amber' ? '#f59e0b' : (status==='green' ? '#16a34a' : '#9aa3b2')); }
-  function clamp01(x){ return Math.max(0, Math.min(1, +x||0)); }
-  function num(v){ return Number.isFinite(+v) ? +v : 0; }
-
-  /* robust loader: try /docs first, then root, then raw */
-  const repo = location.pathname.split('/').filter(Boolean)[0] || 'COLE-Coherence-Layer-Engine-';
-  const user = location.hostname.split('.')[0]; // terryncew
   const candidates = [
-    './docs/receipt.latest.json',
     './receipt.latest.json',
-    `https://raw.githubusercontent.com/${user}/${repo}/main/docs/receipt.latest.json`
+    './docs/receipt.latest.json',
+    // raw fallback helps when browsing file directly
+    location.origin.replace('https://','https://raw.githubusercontent.com/') + location.pathname.split('/').slice(0,3).concat(['main','docs','receipt.latest.json']).join('/')
   ];
 
-  async function jget(url){
-    try{ const u=new URL(url,location.href); u.searchParams.set('v',Date.now()); const r=await fetch(u,{cache:'no-store'}); if(!r.ok) return null; return {json:await r.json(), used:u.href}; }
-    catch{ return null; }
+  async function fetchText(url){
+    try{
+      const u = new URL(url, location.href); u.searchParams.set('v', Date.now());
+      const r = await fetch(u, {cache:'no-store'}); if(!r.ok) return null;
+      return {text: await r.text(), href: u.href};
+    }catch{ return null; }
   }
 
-  let rec=null, used=null;
-  for(const c of candidates){
-    const got = await jget(c);
-    if(got && got.json){ rec=got.json; used=got.used; break; }
+  let got=null;
+  for(const c of candidates){ got = await fetchText(c); if(got) break; }
+  if(!got){ document.body.insertAdjacentHTML('beforeend','<div class="wrap"><p class="muted">No receipt.latest.json found.</p></div>'); return; }
+
+  const bytes = new TextEncoder().encode(got.text).length;
+  const j = JSON.parse(got.text);
+  const status = String((j.attrs && j.attrs.status) || j.status || 'white').toLowerCase();
+  const k = Number((j.signals && j.signals.kappa) ?? (j.telem && j.telem.kappa_eff) ?? 0);
+  const d = Number((j.signals && (j.signals.dhol ?? j.signals.delta_hol)) ?? (j.telem && j.telem.delta_hol) ?? 0);
+
+  const color = status==='green' ? getComputedStyle(document.documentElement).getPropertyValue('--ok')
+              : status==='amber' ? getComputedStyle(document.documentElement).getPropertyValue('--warn')
+              : status==='red'   ? getComputedStyle(document.documentElement).getPropertyValue('--bad')
+              : '#9aa3b2';
+
+  $('dot').className = 'dot ' + (status==='green'?'g':status==='amber'?'a':status==='red'?'r':'w');
+  $('badge').textContent = status.toUpperCase();
+  $('updated').textContent = (j.attrs && j.attrs.ts) ? new Date(j.attrs.ts).toLocaleString() : 'Updated just now';
+  $('dl').href = got.href;
+  $('bytes').textContent = 'Bytes: ' + bytes;
+
+  function setFill(el, value, tau){
+    const f = Math.max(0, Math.min(1, value / tau));
+    el.style.width = (f * 100).toFixed(1) + '%';
+    el.style.background = color;
   }
-
-  if(!rec){
-    document.body.insertAdjacentHTML('beforeend','<div class="wrap"><div class="card" style="margin-top:10px">No receipt found. Put <code>docs/receipt.latest.json</code> in the repo.</div></div>');
-    return;
-  }
-
-  srcDisp.textContent = used.replace(location.origin,'');
-  $('dl').href = used;
-
-  const attrs = rec.attrs || {};
-  const signals = rec.signals || {};
-  const telem   = rec.telem || {};
-  const digest  = rec.digest || rec.guards || {};
-
-  const status = String(attrs.status || rec.status || 'white').toLowerCase();
-  txt.textContent = status.toUpperCase();
-  dot.className = 'dot ' + (status==='red'?'badd':status==='amber'?'warnd':status==='green'?'okd':'whited');
-  pill.hidden=false;
-
-  const k   = num(signals.kappa ?? telem.kappa_eff);
-  const dhol= num(signals.dhol ?? signals.delta_hol ?? telem.delta_hol);
-  const cyc = num(digest.cycle_plus);
-  const X   = num(digest.x_frontier);
-  const es  = num(signals.evidence_strength);
-  const ucr = num(digest.ucr);
-
-  const cfg = {tau_k:.75, tau_hol:.35};
-
-  function setBar(bar, tick, value, thresh){
-    const fill = clamp01(value);
-    bar.style.color = color(status);
-    bar.querySelector('.fill').style.width = (fill*100).toFixed(1)+'%';
-    tick.style.left = (clamp01(thresh)*100).toFixed(1)+'%';
-  }
-  setBar(barK, barKTick, k,   cfg.tau_k);
-  setBar(barD, barDTick, dhol,cfg.tau_hol);
-  barKVal.textContent = isFinite(k)?k.toFixed(3):'—';
-  barDVal.textContent = isFinite(dhol)?dhol.toFixed(3):'—';
-
-  const tstamp = attrs.ts ? Date.parse(attrs.ts) : Date.now();
-  $('updated').textContent = new Date(tstamp).toLocaleString();
-
-  let why='', fix='';
-  if (status==='green'){ $('msgBox').hidden=false; why='All guardrails within thresholds'; fix='No action needed'; }
-  else if (status==='amber'){
-    $('warnBox').hidden=false;
-    if (k>=cfg.tau_k) { why='Elevated stress (κ high)'; fix='Shorten or add structure; raise S*.'; }
-    else if (dhol>=cfg.tau_hol){ why='Path drift (Δhol high)'; fix='Stabilize reasoning; avoid silent rewrites.'; }
-    else if (es>0 && es<0.25){ why='Low evidence strength'; fix='Add a close-support sentence/citation.'; }
-    else if (ucr>=0.40){ why='Unsupported-claim ratio high'; fix='Place evidence within ±1 sentence.'; }
-  } else if (status==='red'){
-    $('redBox').hidden=false;
-    if (cyc>0){ why='Circular reasoning (cycle⁺>0)'; fix='Break the loop; add external evidence.'; }
-    else { why='Near snap or contradictions'; fix='Resolve conflicts; reduce drift; re-run.'; }
-  } else { $('whiteBox').hidden=false; why='Warming up'; fix='Generate a few more receipts.'; }
-  $('why').textContent = why || '—';
-  $('fix').textContent = fix || '—';
-
-  /* tiny glyph */
-  const axes = [
-    {label:'κ',     val: clamp01(k/ cfg.tau_k)},
-    {label:'Δhol',  val: clamp01(dhol/ cfg.tau_hol)},
-    {label:'UCR',   val: clamp01(ucr/ .40)},
-    {label:'low ES',val: clamp01((0.25 - (es||0))/0.25)},
-    {label:'cycles',val: (cyc>0?1:0)},
-    {label:'X',     val: clamp01((X||0)/3)}
-  ];
-  const cx=60, cy=60, R=48, N=axes.length;
-  for(let r=1;r<=3;r++){ const circ=document.createElementNS('http://www.w3.org/2000/svg','circle'); circ.setAttribute('cx',cx); circ.setAttribute('cy',cy); circ.setAttribute('r',(R/3)*r); circ.setAttribute('fill','none'); circ.setAttribute('stroke','#e6eaf3'); circ.setAttribute('stroke-width','0.9'); glyph.appendChild(circ); }
-  axes.forEach((ax,i)=>{ const a=-Math.PI/2 + i*(2*Math.PI/N); const x=cx+R*Math.cos(a), y=cy+R*Math.sin(a);
-    const line=document.createElementNS('http://www.w3.org/2000/svg','line'); line.setAttribute('x1',cx); line.setAttribute('y1',cy); line.setAttribute('x2',x); line.setAttribute('y2',y); line.setAttribute('stroke','#e6eaf3'); line.setAttribute('stroke-width','0.9'); glyph.appendChild(line);
-    const lbl=document.createElementNS('http://www.w3.org/2000/svg','text'); lbl.setAttribute('x',cx+(R+10)*Math.cos(a)); lbl.setAttribute('y',cy+(R+10)*Math.sin(a)); lbl.setAttribute('font-size','9'); lbl.setAttribute('fill','#6a6f7a'); lbl.setAttribute('text-anchor',Math.cos(a)>0.35?'start':(Math.cos(a)<-0.35?'end':'middle')); lbl.setAttribute('dominant-baseline','middle'); lbl.textContent=ax.label; glyph.appendChild(lbl);
-  });
-  function pt(i,v){ const a=-Math.PI/2 + i*(2*Math.PI/N); const r=6+(R-6)*v; return [cx+r*Math.cos(a), cy+r*Math.sin(a)]; }
-  const pts=axes.map((ax,i)=>pt(i,ax.val));
-  const path='M'+pts.map(p=>p[0].toFixed(2)+','+p[1].toFixed(2)).join('L')+'Z';
-  const poly=document.createElementNS('http://www.w3.org/2000/svg','path');
-  poly.setAttribute('d', path); poly.setAttribute('fill', status==='red'?'#fee2e2':(status==='amber'?'#fff3cd':(status==='green'?'#ecfdf5':'#f3f4f6'))); poly.setAttribute('stroke', color(status)); poly.setAttribute('stroke-width','1.6'); glyph.appendChild(poly);
+  setFill($('kfill'), isFinite(k)?k:0, 0.75);
+  setFill($('dfill'), isFinite(d)?d:0, 0.35);
+  $('knum').textContent = isFinite(k) ? k.toFixed(3) : '—';
+  $('dnum').textContent = isFinite(d) ? d.toFixed(3) : '—';
 })();
 </script>
-</body>
-</html>
