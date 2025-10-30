@@ -4,19 +4,14 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <title>COLE · OpenLine Receipt (OLR/1.5)</title>
-<meta name="description" content="COLE coherence signals rendered from docs/receipt.latest.json. Portable receipts for AI runs.">
 <style>
-  :root{
-    --bg:#ffffff; --ink:#0b0b10; --muted:#6a6f7a; --line:#e9ecf2; --tile:#ffffff;
-    --ok:#16a34a; --warn:#f59e0b; --bad:#dc2626; --chip:#f4f6fb; --chipline:#e6eaf3;
-  }
+  :root{--bg:#ffffff; --ink:#0b0b10; --muted:#6a6f7a; --line:#e9ecf2; --tile:#ffffff; --ok:#16a34a; --warn:#f59e0b; --bad:#dc2626; --chip:#f4f6fb; --chipline:#e6eaf3;}
   *{box-sizing:border-box}
   html,body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 -apple-system,system-ui,Segoe UI,Roboto,Inter,Helvetica,Arial,sans-serif}
   .wrap{max-width:980px;margin:0 auto;padding:18px}
   header{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:10px}
   h1{font-size:22px;margin:0}
   .sub{font-size:12px;color:var(--muted);margin:4px 0 0}
-
   .grid{display:grid;grid-template-columns:repeat(6,1fr);gap:10px}
   @media (max-width:900px){.grid{grid-template-columns:repeat(3,1fr)}}
   @media (max-width:560px){.grid{grid-template-columns:repeat(2,1fr)}}
@@ -32,23 +27,18 @@
   .pill{display:inline-flex;align-items:center;gap:10px;padding:8px 12px;border-radius:999px;border:1px solid var(--line);background:var(--chip);font-weight:700}
   .pill .dot{width:10px;height:10px;border-radius:50%}
   .okd{background:var(--ok)} .warnd{background:var(--warn)} .badd{background:var(--bad)} .whited{background:#9aa3b2}
-
   .kv{display:grid;grid-template-columns:auto 1fr;gap:6px 10px;align-items:center}
   .divider{height:1px;background:var(--line);margin:10px 0}
-
   .barrow{display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:center}
   .bar{position:relative;width:100%;height:10px;border-radius:999px;background:#f3f5f9;border:1px solid var(--line);overflow:hidden}
   .bar .fill{position:absolute;left:0;top:0;bottom:0;background:currentColor;opacity:.9}
   .bar .tick{position:absolute;top:-2px;bottom:-2px;width:2px;background:#9aa3b2}
-
   .glyphTitle{font-size:12px;color:var(--muted);margin:0 0 6px}
   .svgbox{width:100%;aspect-ratio:1/1;display:block}
   .legend{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;font-size:12px;color:var(--muted)}
   .chip{background:var(--chip);border:1px solid var(--chipline);border-radius:999px;padding:.25em .6em}
-
   .twoCols{display:grid;grid-template-columns:1.1fr .9fr;gap:10px}
   @media (max-width:860px){.twoCols{grid-template-columns:1fr}}
-
   .note{font-size:12px;color:var(--muted)}
   .success{background:#ecfdf5;border:1px solid #d1fae5;color:#065f46;padding:10px;border-radius:10px}
   .warnbox{background:#fff7ed;border:1px solid #ffedd5;color:#7c2d12;padding:10px;border-radius:10px}
@@ -57,8 +47,6 @@
   .dials{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
   .dial{font-size:12px;border:1px solid var(--chipline);background:var(--chip);border-radius:8px;padding:6px 8px;display:flex;gap:6px;align-items:center}
   .dial .p{width:6px;height:6px;border-radius:50%}
-
-  .src{font-size:11px;color:#6a6f7a;margin-left:10px}
 </style>
 </head>
 <body>
@@ -66,19 +54,16 @@
   <header>
     <div>
       <h1>COLE · OpenLine Receipt</h1>
-      <p class="sub">OLR/1.5 · “Receipts, not rhetoric.” Reads <code>docs/receipt.latest.json</code>. Dials render only on AMBER/RED.</p>
+      <p class="sub">OLR/1.5 · “Receipts, not rhetoric.” Reads <code>receipt.latest.json</code> (same folder). Dials render only on AMBER/RED.</p>
     </div>
     <div class="pill" id="statusPill" hidden>
       <span class="dot" id="statusDot"></span>
       <span id="statusText">status</span>
-      <span class="src" id="srcHint"></span>
     </div>
   </header>
 
-  <!-- KPI tiles -->
   <section class="grid" id="grid"></section>
 
-  <!-- Middle: glyph + bars -->
   <section class="twoCols" style="margin-top:10px">
     <div class="card">
       <div class="glyphTitle">Coherence glyph (risk grows outward)</div>
@@ -114,8 +99,6 @@
       </div>
 
       <div class="divider"></div>
-
-      <!-- friendly messages -->
       <div id="whiteBox" class="whitebox" hidden>Warming up: the first few runs calibrate a baseline. Badge turns green/amber/red after a short history window.</div>
       <div id="msgBox" class="success" hidden>All guardrails within thresholds. Looks good — no action needed.</div>
       <div id="warnBox" class="warnbox" hidden>Heads up: something needs a quick look. See “Why” and “Try next”.</div>
@@ -131,7 +114,6 @@
     </div>
   </section>
 
-  <!-- Value card -->
   <section class="card" style="margin-top:10px">
     <div class="muted">Value (policy-aware, est.)</div>
     <div class="row" style="margin-top:6px">
@@ -140,7 +122,6 @@
     </div>
   </section>
 
-  <!-- Rules -->
   <section class="card" style="margin-top:10px">
     <div class="muted" id="rules">Rules: GREEN within thresholds; AMBER if any one is high; RED on cycles/contradictions or near snap.</div>
   </section>
@@ -152,44 +133,58 @@
 (async function(){
   const $ = id => document.getElementById(id);
   const grid = $('grid');
-  const pill=$('statusPill'), dot=$('statusDot'), txt=$('statusText'), srcHint=$('srcHint');
+  const pill=$('statusPill'), dot=$('statusDot'), txt=$('statusText');
   const glyph=$('glyph');
   const barK=$('barK'), barD=$('barD'), barKTick=$('barKTick'), barDTick=$('barDTick');
   const barKVal=$('barKVal'), barDVal=$('barDVal');
   const msgBox=$('msgBox'), warnBox=$('warnBox'), redBox=$('redBox'), whiteBox=$('whiteBox');
-  const savedChip=$('savedChip');
-  const polEl=$('pol');
+  const savedChip=$('savedChip'); const polEl=$('pol');
   const dialsCard=$('dialsCard'), gradTxt=$('gradTxt'), curvTxt=$('curvTxt'), freshTxt=$('freshTxt');
   const pGrad=$('pGrad'), pCurv=$('pCurv'), pFresh=$('pFresh');
 
-  function color(status){ return status==='red' ? '#dc2626' : (status==='amber' ? '#f59e0b' : (status==='green' ? '#16a34a' : '#9aa3b2')); }
-  function clamp01(x){ return Math.max(0, Math.min(1, +x||0)); }
+  const color = s => s==='red' ? '#dc2626' : s==='amber' ? '#f59e0b' : s==='green' ? '#16a34a' : '#9aa3b2';
+  const clamp01 = x => Math.max(0, Math.min(1, +x||0));
   const num = v => Number.isFinite(+v) ? +v : 0;
-  function q8_to_s1(b){ const x = (Number(b)-128)/127; return Math.max(-1, Math.min(1, x)); }
+  const q8_to_s1 = b => Math.max(-1, Math.min(1, (Number(b)-128)/127));
 
-  // Try Pages → explicit repo path → raw.githubusercontent (with 1-minute cache bust)
-  async function loadReceipt(){
-    const bust = 'v=' + Math.floor(Date.now()/60000);
-    const candidates = [
-      './receipt.latest.json',
-      '/COLE-Coherence-Layer-Engine-/receipt.latest.json',
-      'https://raw.githubusercontent.com/terryncew/COLE-Coherence-Layer-Engine-/main/docs/receipt.latest.json'
-    ];
-    for(const url of candidates){
-      try{
-        const u = new URL(url, location.href);
-        u.searchParams.set('v', bust);
-        const r = await fetch(u.toString(), {cache:'no-store'});
-        if(!r.ok) continue;
-        const txt = await r.text();
-        try{
-          const json = JSON.parse(txt);
-          return {json, source: url.includes('raw.githubusercontent') ? 'RAW' : 'PAGES'};
-        }catch{ continue; }
-      }catch{ /* next */ }
-    }
-    return null;
+  async function jget(path){
+    try{ const u=new URL(path,location.href); u.searchParams.set('v',Date.now()); const r=await fetch(u,{cache:'no-store'}); return r.ok? r.json(): null; }
+    catch{ return null; }
   }
+
+  const rec = await jget('./receipt.latest.json');
+  if(!rec){
+    const c=document.createElement('div'); c.className='card';
+    c.innerHTML='<div class="kpi"><div class="lamp warnd"></div><div class="big">—</div></div><div class="muted">No receipt found. Add <code>receipt.latest.json</code> next to this page.</div>';
+    grid.appendChild(c);
+    $('rules').textContent='No receipt found. Run your workflow to generate receipt.latest.json.';
+    return;
+  }
+
+  const attrs = rec.attrs || {};
+  const signals = rec.signals || {};
+  const telem = rec.telem || {};
+  const guards = rec.guards || rec.digest || {};
+  const policy = rec.policy || {};
+
+  const status = String(attrs.status || rec.status || 'white').toLowerCase();
+  txt.textContent = status.toUpperCase();
+  document.getElementById('statusDot').className='dot ' + (status==='red'?'badd':status==='amber'?'warnd':status==='green'?'okd':'whited');
+  pill.hidden=false;
+
+  // prefer telem.* with fallback to signals.*
+  const k   = num(telem.kappa_eff ?? signals.kappa);
+  const dhol= num(telem.delta_hol ?? signals.dhol ?? telem.delta ?? signals.delta);
+  const ucr = num(guards.ucr);
+  const es  = num(signals.evidence_strength);
+  const cyc = num(guards.cycles ?? guards.cycle_plus);
+  const X   = num(guards.contradictions ?? guards.x_frontier);
+
+  const cfg = {tau_k:.75, tau_hol:.35, ucr_min:.40, es_min:.25};
+  const cK = v => (v>=cfg.tau_k?'warn':'ok');
+  const cD = v => (v>=cfg.tau_hol?'warn':'ok');
+  const cU = v => (v>=cfg.ucr_min?'warn':'ok');
+  const cE = v => (v< cfg.es_min?'warn':'ok');
 
   function tile(label, value, hint, cls){
     const c=document.createElement('div'); c.className='card';
@@ -200,87 +195,39 @@
     row.appendChild(lamp); row.appendChild(b); c.appendChild(row); c.appendChild(cap); return c;
   }
 
-  const pack = await loadReceipt();
-
-  if(!pack){
-    const c=document.createElement('div'); c.className='card';
-    c.innerHTML='<div class="kpi"><div class="lamp warn"></div><div class="big">No receipt</div></div><div class="muted">Add <code>docs/receipt.latest.json</code> and enable GitHub Pages (main → /docs). Then push.</div>';
-    grid.appendChild(c);
-    $('rules').textContent='No receipt found. Generate docs/receipt.latest.json and republish.';
-    return;
-  }
-
-  const rec = pack.json;
-  srcHint.textContent = pack.source === 'RAW' ? '(source: RAW)' : '(source: PAGES)';
-
-  // v1.5 layout: be liberal to older fields
-  const attrs = rec.attrs || {};
-  const signals = rec.signals || rec.telem || {};
-  const guards  = rec.guards || rec.digest || {};
-  const policy  = rec.policy || {};
-
-  // status (prefer explicit; otherwise infer from thresholds)
-  let status = String(attrs.status || rec.status || '').toLowerCase().trim();
-  const k   = num(signals.kappa ?? signals.kappa_eff);
-  const dhol= num(signals.dhol ?? signals.delta_hol);
-  const ucr = num(guards.ucr);
-  const es  = num(signals.evidence_strength);
-  const cyc = num(guards.cycles ?? guards.cycle_plus);
-  const X   = num(guards.contradictions ?? guards.x_frontier);
-
-  const cfg = {tau_k:.75, tau_hol:.35, ucr_min:.40, es_min:.25};
-  if(!status){
-    const red   = (cyc>0) || k>=cfg.tau_k || dhol>=cfg.tau_hol;
-    const amber = !red && (k>=cfg.tau_k*0.8 || dhol>=cfg.tau_hol*0.8 || ucr>=cfg.ucr_min || es<cfg.es_min);
-    status = red ? 'red' : amber ? 'amber' : 'green';
-  }
-
-  // status pill
-  const dotClass = status==='red'?'badd':(status==='amber'?'warnd':(status==='green'?'okd':'whited'));
-  dot.className='dot '+dotClass; txt.textContent=status.toUpperCase(); pill.hidden=false;
-
-  // tiles
-  const cK = v => (v>=cfg.tau_k?'warn':'ok');
-  const cD = v => (v>=cfg.tau_hol?'warn':'ok');
-  const cU = v => (v>=cfg.ucr_min?'warn':'ok');
-  const cE = v => (v< cfg.es_min?'warn':'ok');
-
+  // KPI tiles
   grid.appendChild(tile('κ (stress)', isFinite(k)?k.toFixed(3):'—', 'Density vs structure', cK(k)));
-  grid.appendChild(tile('Δhol (drift)', isFinite(dhol)?dhol.toFixed(3):'—', 'Path mismatch', cD(dhol)));
+  grid.appendChild(tile('Δhol (drift)', isFinite(dhol)?dhol.toFixed(3):'—', 'Path mismatch (JSD/EWMA)', cD(dhol)));
   grid.appendChild(tile('UCR', isFinite(ucr)?(ucr*100).toFixed(0)+'%':'—', 'Unsupported-claim ratio', cU(ucr)));
   grid.appendChild(tile('ES', isFinite(es)?(es*100).toFixed(0)+'%':'—', 'Evidence strength', cE(es)));
   grid.appendChild(tile('Cycles', String(cyc||0), 'cycle⁺ > 0 → RED', (cyc>0?'bad':'ok')));
   grid.appendChild(tile('X (contradictions)', String(X||0), 'Unresolved contradictions', (X>0?'warn':'ok')));
 
-  // updated, why, next
+  // Updated
   const tstamp = attrs.ts ? Date.parse(attrs.ts) : Date.now();
   $('updated').textContent = new Date(tstamp).toLocaleString();
 
+  // Why / Try next
   let why='', fix='';
-  const boxes = {green: msgBox, amber: warnBox, red: redBox, white: whiteBox};
-  Object.values(boxes).forEach(b=>b.hidden=true);
-  (boxes[status] || whiteBox).hidden = false;
-
-  if (status==='green'){ why='All guardrails within thresholds'; fix='No action needed'; }
+  if (status==='white'){ whiteBox.hidden=false; why='Warming up (insufficient history)'; fix='Generate a few more receipts to calibrate the baseline.'; }
+  else if (status==='green'){ msgBox.hidden=false; why='All guardrails within thresholds'; fix='No action needed'; }
   else if (status==='amber'){
-    if (k>=cfg.tau_k) { why='Elevated stress (κ high)'; fix='Shorten or add structure; increase support so Φ* rises.'; }
+    warnBox.hidden=false;
+    if (k>=cfg.tau_k) { why='Elevated stress (κ high)'; fix='Shorten or add structure/support so S* rises.'; }
     else if (dhol>=cfg.tau_hol){ why='Path drift (Δhol high)'; fix='Stabilize reasoning across turns; avoid silent rewrites.'; }
-    else if (ucr>=cfg.ucr_min){ why='Many claims lack nearby support'; fix='Place evidence/citation within ±1 sentence of claims.'; }
-    else { why='Guardrail near threshold'; fix='Tune the highest dial a notch toward stability.'; }
+    else if (ucr>=cfg.ucr_min){ why='Many claims lack nearby support'; fix='Place an evidence sentence or citation within ±1 sentence.'; }
   } else if (status==='red'){
-    if (cyc>0){ why='Circular reasoning (cycle⁺>0)'; fix='Break the loop; pull in external evidence or restructure.'; }
-    else if (dhol>=cfg.tau_hol){ why='Severe path drift'; fix='Resolve deletions/contradictions explicitly; re-run.'; }
-    else { why='Multiple guardrails tripped'; fix='Reduce κ and Δhol; add support; re-test.'; }
-  } else {
-    why='Warming up (insufficient history)'; fix='Generate a few more receipts to calibrate the baseline.';
+    redBox.hidden=false;
+    if (cyc>0){ why='Circular reasoning detected (cycle⁺>0)'; fix='Break the loop; add external evidence or restructure claims.'; }
+    else if (dhol>=cfg.tau_hol){ why='Path drift + possible silent deletion'; fix='Add a resolution/handling sentence for removed contradictions.'; }
+    else if (k>=cfg.tau_k && ucr>=cfg.ucr_min){ why='High κ + unsupported claims'; fix='Add citations or “according to…” near claims.'; }
   }
-  $('why').textContent = why || '—';
-  $('fix').textContent = fix || '—';
+  $('why').textContent = why || '—'; $('fix').textContent = fix || '—';
 
-  // bars
+  // Bars
   function setBar(bar, tick, value, thresh){
-    bar.style.color = color(status);
-    bar.querySelector('.fill').style.width = (clamp01(value)*100).toFixed(1)+'%';
+    const fill = clamp01(value); bar.style.color = color(status);
+    bar.querySelector('.fill').style.width = (fill*100).toFixed(1)+'%';
     tick.style.left = (clamp01(thresh)*100).toFixed(1)+'%';
   }
   setBar(barK, barKTick, k,   cfg.tau_k);
@@ -288,66 +235,48 @@
   barKVal.textContent = isFinite(k)?k.toFixed(3):'—';
   barDVal.textContent = isFinite(dhol)?dhol.toFixed(3):'—';
 
-  // glyph
-  const axes = [
-    {label:'κ',     val: cfg.tau_k ? clamp01(k/(cfg.tau_k||1)) : 0},
-    {label:'Δhol',  val: cfg.tau_hol ? clamp01(dhol/(cfg.tau_hol||1)) : 0},
-    {label:'UCR',   val: cfg.ucr_min ? clamp01(ucr/(cfg.ucr_min||1)) : 0},
-    {label:'low ES',val: cfg.es_min ? clamp01((cfg.es_min - (es||0))/(cfg.es_min||1)) : 0},
-    {label:'cycles',val: (cyc>0 ? 1 : 0)},
-    {label:'X',     val: clamp01((X||0)/3)}
-  ];
-  const cx=60, cy=60, R=48, N=axes.length;
-  for(let r=1;r<=3;r++){
-    const circ=document.createElementNS('http://www.w3.org/2000/svg','circle');
-    circ.setAttribute('cx',cx); circ.setAttribute('cy',cy); circ.setAttribute('r',(R/3)*r);
-    circ.setAttribute('fill','none'); circ.setAttribute('stroke','#e6eaf3'); circ.setAttribute('stroke-width','0.9');
-    glyph.appendChild(circ);
-  }
-  axes.forEach((ax,i)=>{
-    const a=-Math.PI/2 + i*(2*Math.PI/N);
-    const x=cx + R*Math.cos(a), y=cy + R*Math.sin(a);
-    const line=document.createElementNS('http://www.w3.org/2000/svg','line');
-    line.setAttribute('x1',cx); line.setAttribute('y1',cy); line.setAttribute('x2',x); line.setAttribute('y2',y);
-    line.setAttribute('stroke','#e6eaf3'); line.setAttribute('stroke-width','0.9'); glyph.appendChild(line);
-    const lbl=document.createElementNS('http://www.w3.org/2000/svg','text');
-    lbl.setAttribute('x',cx+(R+10)*Math.cos(a)); lbl.setAttribute('y',cy+(R+10)*Math.sin(a));
-    lbl.setAttribute('font-size','9'); lbl.setAttribute('fill','#6a6f7a');
-    lbl.setAttribute('text-anchor', Math.cos(a)>0.35?'start':(Math.cos(a)<-0.35?'end':'middle'));
-    lbl.setAttribute('dominant-baseline','middle'); lbl.textContent=ax.label; glyph.appendChild(lbl);
-  });
-  function pt(i,v){ const a=-Math.PI/2 + i*(2*Math.PI/N); const r=6+(R-6)*v; return [cx+r*Math.cos(a), cy+r*Math.sin(a)]; }
-  const pts=axes.map((ax,i)=>pt(i,ax.val));
-  const path='M'+pts.map(p=>p[0].toFixed(2)+','+p[1].toFixed(2)).join('L')+'Z';
-  const poly=document.createElementNS('http://www.w3.org/2000/svg','path');
-  poly.setAttribute('d', path);
-  poly.setAttribute('fill', status==='red'?'#fee2e2':(status==='amber'?'#fff3cd':(status==='green'?'#ecfdf5':'#f3f4f6')));
-  poly.setAttribute('stroke', color(status));
-  poly.setAttribute('stroke-width','1.6');
-  glyph.appendChild(poly);
-  const hub2=document.createElementNS('http://www.w3.org/2000/svg','circle');
-  hub2.setAttribute('cx',cx); hub2.setAttribute('cy',cy); hub2.setAttribute('r',2.1); hub2.setAttribute('fill',color(status)); glyph.appendChild(hub2);
+  // Glyph (guarded)
+  try{
+    const axes = [
+      {label:'κ',     val: cfg.tau_k ? clamp01(k/(cfg.tau_k||1)) : 0},
+      {label:'Δhol',  val: cfg.tau_hol ? clamp01(dhol/(cfg.tau_hol||1)) : 0},
+      {label:'UCR',   val: cfg.ucr_min ? clamp01(ucr/(cfg.ucr_min||1)) : 0},
+      {label:'low ES',val: cfg.es_min ? clamp01((cfg.es_min - (es||0))/(cfg.es_min||1)) : 0},
+      {label:'cycles',val: (cyc>0 ? 1 : 0)},
+      {label:'X',     val: clamp01((X||0)/3)}
+    ];
+    const cx=60, cy=60, R=48, N=axes.length;
+    for(let r=1;r<=3;r++){
+      const circ=document.createElementNS('http://www.w3.org/2000/svg','circle');
+      circ.setAttribute('cx',cx); circ.setAttribute('cy',cy); circ.setAttribute('r',(R/3)*r);
+      circ.setAttribute('fill','none'); circ.setAttribute('stroke','#e6eaf3'); circ.setAttribute('stroke-width','0.9'); glyph.appendChild(circ);
+    }
+    axes.forEach((ax,i)=>{
+      const a=-Math.PI/2 + i*(2*Math.PI/N);
+      const x=cx + R*Math.cos(a), y=cy + R*Math.sin(a);
+      const line=document.createElementNS('http://www.w3.org/2000/svg','line');
+      line.setAttribute('x1',cx); line.setAttribute('y1',cy); line.setAttribute('x2',x); line.setAttribute('y2',y);
+      line.setAttribute('stroke','#e6eaf3'); line.setAttribute('stroke-width','0.9'); glyph.appendChild(line);
+      const lbl=document.createElementNS('http://www.w3.org/2000/svg','text');
+      lbl.setAttribute('x',cx+(R+10)*Math.cos(a)); lbl.setAttribute('y',cy+(R+10)*Math.sin(a));
+      lbl.setAttribute('font-size','9'); lbl.setAttribute('fill','#6a6f7a');
+      lbl.setAttribute('text-anchor', Math.cos(a)>0.35?'start':(Math.cos(a)<-0.35?'end':'middle'));
+      lbl.setAttribute('dominant-baseline','middle'); lbl.textContent=ax.label; glyph.appendChild(lbl);
+    });
+    function pt(i,v){ const a=-Math.PI/2 + i*(2*Math.PI/N); const r=6+(R-6)*v; return [cx+r*Math.cos(a), cy+r*Math.sin(a)]; }
+    const pts=axes.map((ax,i)=>pt(i,ax.val));
+    const path='M'+pts.map(p=>p[0].toFixed(2)+','+p[1].toFixed(2)).join('L')+'Z';
+    const poly=document.createElementNS('http://www.w3.org/2000/svg','path');
+    poly.setAttribute('d', path);
+    poly.setAttribute('fill', status==='red'?'#fee2e2':status==='amber'?'#fff3cd':status==='green'?'#ecfdf5':'#f3f4f6');
+    poly.setAttribute('stroke', color(status)); poly.setAttribute('stroke-width','1.6'); glyph.appendChild(poly);
+    const hub2=document.createElementNS('http://www.w3.org/2000/svg','circle');
+    hub2.setAttribute('cx',60); hub2.setAttribute('cy',60); hub2.setAttribute('r',2.1); hub2.setAttribute('fill',color(status)); glyph.appendChild(hub2);
+  }catch(e){ /* swallow drawing errors; keep page live */ }
 
-  // Dials (only on AMBER/RED and only when present)
-  const dials = (rec.telem && rec.telem.dials) || {};
-  const hasDials = (status!=='green') && ('dphi_dk_q8' in dials) && ('d2phi_dt2_q8' in dials) && ('fresh_ratio_q8' in dials);
-  if (hasDials){
-    const g = q8_to_s1(dials.dphi_dk_q8);
-    const c = q8_to_s1(dials.d2phi_dt2_q8);
-    const f = q8_to_s1(dials.fresh_ratio_q8);
-    gradTxt.textContent = g.toFixed(2);
-    curvTxt.textContent = c.toFixed(2);
-    freshTxt.textContent = f.toFixed(2);
-    pGrad.style.background = g>=0 ? 'var(--ok)' : 'var(--warn)';
-    pCurv.style.background = c>=0 ? 'var(--ok)' : 'var(--warn)';
-    pFresh.style.background = f>=0 ? 'var(--ok)' : 'var(--warn)';
-    dialsCard.style.display = 'block';
-  }
-
-  // Value estimate
+  // Value (very rough; policy-aware if present)
   const hazard = num((rec.hazard||{}).p_review);
-  const A=15, R=5;
-  const saved = Math.max(0, (A-R)) * Math.max(0, Math.min(1, hazard||0));
+  const A=15, R=5; const saved = Math.max(0, (A-R)) * Math.max(0, Math.min(1, hazard||0));
   savedChip.textContent = 'Saved minutes/run: ' + (isFinite(saved)? saved.toFixed(1) : '—');
 
   polEl.textContent = policy.policy_id ? `${policy.policy_id}${policy.policy_hash ? ' · ' + policy.policy_hash.slice(0,14)+'…' : ''}` : '—';
