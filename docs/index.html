@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <title>COLE · OpenLine Receipt (OLR/1.5)</title>
 <style>
-  :root{--bg:#ffffff; --ink:#0b0b10; --muted:#6a6f7a; --line:#e9ecf2; --tile:#ffffff; --ok:#16a34a; --warn:#f59e0b; --bad:#dc2626; --chip:#f4f6fb; --chipline:#e6eaf3;}
+  :root{--bg:#ffffff;--ink:#0b0b10;--muted:#6a6f7a;--line:#e9ecf2;--tile:#ffffff;--ok:#16a34a;--warn:#f59e0b;--bad:#dc2626;--chip:#f4f6fb;--chipline:#e6eaf3;}
   *{box-sizing:border-box}
   html,body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 -apple-system,system-ui,Segoe UI,Roboto,Inter,Helvetica,Arial,sans-serif}
   .wrap{max-width:980px;margin:0 auto;padding:18px}
@@ -23,7 +23,6 @@
   .muted{color:var(--muted);font-size:12px}
   .row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
   .btn{display:inline-block;background:#0b0b10;color:#fff;text-decoration:none;border:1px solid var(--line);padding:10px 12px;border-radius:10px;font-weight:700}
-  .btn:active{transform:translateY(1px)}
   .pill{display:inline-flex;align-items:center;gap:10px;padding:8px 12px;border-radius:999px;border:1px solid var(--line);background:var(--chip);font-weight:700}
   .pill .dot{width:10px;height:10px;border-radius:50%}
   .okd{background:var(--ok)} .warnd{background:var(--warn)} .badd{background:var(--bad)} .whited{background:#9aa3b2}
@@ -54,15 +53,10 @@
   <header>
     <div>
       <h1>COLE · OpenLine Receipt</h1>
-      <p class="sub">OLR/1.5 · “Receipts, not rhetoric.” Reads <code>receipt.latest.json</code> (same folder). Dials render only on AMBER/RED.</p>
+      <p class="sub">OLR/1.5 · “Receipts, not rhetoric.” Reads <code>receipt.latest.json</code> (root or <code>/docs</code>). Dials render only on AMBER/RED.</p>
     </div>
-    <div class="pill" id="statusPill" hidden>
-      <span class="dot" id="statusDot"></span>
-      <span id="statusText">status</span>
-    </div>
+    <div class="pill" id="statusPill" hidden><span class="dot" id="statusDot"></span><span id="statusText">status</span></div>
   </header>
-
-  <section class="grid" id="grid"></section>
 
   <section class="twoCols" style="margin-top:10px">
     <div class="card">
@@ -73,57 +67,27 @@
 
     <div class="card">
       <div class="glyphTitle">Signals at a glance</div>
-      <div class="barrow" style="margin-top:2px">
-        <div style="width:52px;color:var(--muted)">κ</div>
-        <div class="bar" id="barK"><div class="fill"></div><div class="tick" id="barKTick"></div></div>
-        <div id="barKVal" style="width:56px;text-align:right">—</div>
-      </div>
-      <div class="barrow" style="margin-top:6px">
-        <div style="width:52px;color:var(--muted)">Δhol</div>
-        <div class="bar" id="barD"><div class="fill"></div><div class="tick" id="barDTick"></div></div>
-        <div id="barDVal" style="width:56px;text-align:right">—</div>
-      </div>
+      <div class="barrow" style="margin-top:2px"><div style="width:52px;color:#6a6f7a">κ</div><div class="bar" id="barK"><div class="fill"></div><div class="tick" id="barKTick"></div></div><div id="barKVal" style="width:56px;text-align:right">—</div></div>
+      <div class="barrow" style="margin-top:6px"><div style="width:52px;color:#6a6f7a">Δhol</div><div class="bar" id="barD"><div class="fill"></div><div class="tick" id="barDTick"></div></div><div id="barDVal" style="width:56px;text-align:right">—</div></div>
 
-      <div id="dialsCard" class="card" style="margin-top:10px; padding:8px; display:none">
-        <div class="glyphTitle">Dials (q8 → [-1..+1])</div>
-        <div class="dials">
-          <div class="dial"><span class="p" id="pGrad"></span><span>∂Φ/∂κ:</span><span id="gradTxt">—</span></div>
-          <div class="dial"><span class="p" id="pCurv"></span><span>d²Φ/dt²:</span><span id="curvTxt">—</span></div>
-          <div class="dial"><span class="p" id="pFresh"></span><span>freshness:</span><span id="freshTxt">—</span></div>
-        </div>
-      </div>
-
-      <div class="row" style="margin-top:10px">
-        <a class="btn" href="./receipt.latest.json" download>Download receipt</a>
-        <a class="btn" href="./history/">History</a>
-      </div>
-
+      <div class="row" style="margin-top:10px"><a class="btn" id="dl" href="#" download>Download receipt</a><a class="btn" id="hist" href="./history/">History</a></div>
       <div class="divider"></div>
       <div id="whiteBox" class="whitebox" hidden>Warming up: the first few runs calibrate a baseline. Badge turns green/amber/red after a short history window.</div>
       <div id="msgBox" class="success" hidden>All guardrails within thresholds. Looks good — no action needed.</div>
       <div id="warnBox" class="warnbox" hidden>Heads up: something needs a quick look. See “Why” and “Try next”.</div>
       <div id="redBox"  class="redbox"  hidden>Blocked: guardrails tripped. Fix the issue and re-run.</div>
-
       <div class="divider"></div>
       <div class="kv">
         <div class="muted">Updated</div><div id="updated">—</div>
         <div class="muted">Why</div><div id="why">—</div>
         <div class="muted">Try next</div><div id="fix">—</div>
-        <div class="muted">Policy</div><div id="pol">—</div>
+        <div class="muted">Source</div><div id="srcDisp">—</div>
       </div>
     </div>
   </section>
 
   <section class="card" style="margin-top:10px">
-    <div class="muted">Value (policy-aware, est.)</div>
-    <div class="row" style="margin-top:6px">
-      <span class="chip" id="savedChip">Saved minutes/run: —</span>
-      <span class="chip">Goodhart guard: κ + Δhol</span>
-    </div>
-  </section>
-
-  <section class="card" style="margin-top:10px">
-    <div class="muted" id="rules">Rules: GREEN within thresholds; AMBER if any one is high; RED on cycles/contradictions or near snap.</div>
+    <div class="muted" id="rules">Rules: GREEN within thresholds; AMBER if any one is high; RED on cycles/contradictions.</div>
   </section>
 
   <p class="note" style="margin-top:8px">Tip: Keep citations near claims; avoid silent deletions; stable paths beat long monologues.</p>
@@ -132,101 +96,65 @@
 <script>
 (async function(){
   const $ = id => document.getElementById(id);
-  const grid = $('grid');
-  const pill=$('statusPill'), dot=$('statusDot'), txt=$('statusText');
-  const glyph=$('glyph');
-  const barK=$('barK'), barD=$('barD'), barKTick=$('barKTick'), barDTick=$('barDTick');
+  const glyph=$('glyph'), barK=$('barK'), barD=$('barD'), barKTick=$('barKTick'), barDTick=$('barDTick');
   const barKVal=$('barKVal'), barDVal=$('barDVal');
-  const msgBox=$('msgBox'), warnBox=$('warnBox'), redBox=$('redBox'), whiteBox=$('whiteBox');
-  const savedChip=$('savedChip'); const polEl=$('pol');
-  const dialsCard=$('dialsCard'), gradTxt=$('gradTxt'), curvTxt=$('curvTxt'), freshTxt=$('freshTxt');
-  const pGrad=$('pGrad'), pCurv=$('pCurv'), pFresh=$('pFresh');
+  const pill=$('statusPill'), dot=$('statusDot'), txt=$('statusText');
+  const srcDisp=$('srcDisp');
 
-  const color = s => s==='red' ? '#dc2626' : s==='amber' ? '#f59e0b' : s==='green' ? '#16a34a' : '#9aa3b2';
-  const clamp01 = x => Math.max(0, Math.min(1, +x||0));
-  const num = v => Number.isFinite(+v) ? +v : 0;
-  const q8_to_s1 = b => Math.max(-1, Math.min(1, (Number(b)-128)/127));
+  function color(status){ return status==='red' ? '#dc2626' : (status==='amber' ? '#f59e0b' : (status==='green' ? '#16a34a' : '#9aa3b2')); }
+  function clamp01(x){ return Math.max(0, Math.min(1, +x||0)); }
+  function num(v){ return Number.isFinite(+v) ? +v : 0; }
 
-  async function jget(path){
-    try{ const u=new URL(path,location.href); u.searchParams.set('v',Date.now()); const r=await fetch(u,{cache:'no-store'}); return r.ok? r.json(): null; }
+  /* robust loader: try /docs first, then root, then raw */
+  const repo = location.pathname.split('/').filter(Boolean)[0] || 'COLE-Coherence-Layer-Engine-';
+  const user = location.hostname.split('.')[0]; // terryncew
+  const candidates = [
+    './docs/receipt.latest.json',
+    './receipt.latest.json',
+    `https://raw.githubusercontent.com/${user}/${repo}/main/docs/receipt.latest.json`
+  ];
+
+  async function jget(url){
+    try{ const u=new URL(url,location.href); u.searchParams.set('v',Date.now()); const r=await fetch(u,{cache:'no-store'}); if(!r.ok) return null; return {json:await r.json(), used:u.href}; }
     catch{ return null; }
   }
 
-  const rec = await jget('./receipt.latest.json');
+  let rec=null, used=null;
+  for(const c of candidates){
+    const got = await jget(c);
+    if(got && got.json){ rec=got.json; used=got.used; break; }
+  }
+
   if(!rec){
-    const c=document.createElement('div'); c.className='card';
-    c.innerHTML='<div class="kpi"><div class="lamp warnd"></div><div class="big">—</div></div><div class="muted">No receipt found. Add <code>receipt.latest.json</code> next to this page.</div>';
-    grid.appendChild(c);
-    $('rules').textContent='No receipt found. Run your workflow to generate receipt.latest.json.';
+    document.body.insertAdjacentHTML('beforeend','<div class="wrap"><div class="card" style="margin-top:10px">No receipt found. Put <code>docs/receipt.latest.json</code> in the repo.</div></div>');
     return;
   }
 
+  srcDisp.textContent = used.replace(location.origin,'');
+  $('dl').href = used;
+
   const attrs = rec.attrs || {};
   const signals = rec.signals || {};
-  const telem = rec.telem || {};
-  const guards = rec.guards || rec.digest || {};
-  const policy = rec.policy || {};
+  const telem   = rec.telem || {};
+  const digest  = rec.digest || rec.guards || {};
 
   const status = String(attrs.status || rec.status || 'white').toLowerCase();
   txt.textContent = status.toUpperCase();
-  document.getElementById('statusDot').className='dot ' + (status==='red'?'badd':status==='amber'?'warnd':status==='green'?'okd':'whited');
+  dot.className = 'dot ' + (status==='red'?'badd':status==='amber'?'warnd':status==='green'?'okd':'whited');
   pill.hidden=false;
 
-  // prefer telem.* with fallback to signals.*
-  const k   = num(telem.kappa_eff ?? signals.kappa);
-  const dhol= num(telem.delta_hol ?? signals.dhol ?? telem.delta ?? signals.delta);
-  const ucr = num(guards.ucr);
+  const k   = num(signals.kappa ?? telem.kappa_eff);
+  const dhol= num(signals.dhol ?? signals.delta_hol ?? telem.delta_hol);
+  const cyc = num(digest.cycle_plus);
+  const X   = num(digest.x_frontier);
   const es  = num(signals.evidence_strength);
-  const cyc = num(guards.cycles ?? guards.cycle_plus);
-  const X   = num(guards.contradictions ?? guards.x_frontier);
+  const ucr = num(digest.ucr);
 
-  const cfg = {tau_k:.75, tau_hol:.35, ucr_min:.40, es_min:.25};
-  const cK = v => (v>=cfg.tau_k?'warn':'ok');
-  const cD = v => (v>=cfg.tau_hol?'warn':'ok');
-  const cU = v => (v>=cfg.ucr_min?'warn':'ok');
-  const cE = v => (v< cfg.es_min?'warn':'ok');
+  const cfg = {tau_k:.75, tau_hol:.35};
 
-  function tile(label, value, hint, cls){
-    const c=document.createElement('div'); c.className='card';
-    const row=document.createElement('div'); row.className='kpi';
-    const lamp=document.createElement('div'); lamp.className='lamp '+(cls||'mutelamp');
-    const b=document.createElement('div'); b.className='big'; b.textContent=value;
-    const cap=document.createElement('div'); cap.innerHTML = `<div class="muted">${label}</div><div class="muted" style="font-size:11px">${hint||''}</div>`;
-    row.appendChild(lamp); row.appendChild(b); c.appendChild(row); c.appendChild(cap); return c;
-  }
-
-  // KPI tiles
-  grid.appendChild(tile('κ (stress)', isFinite(k)?k.toFixed(3):'—', 'Density vs structure', cK(k)));
-  grid.appendChild(tile('Δhol (drift)', isFinite(dhol)?dhol.toFixed(3):'—', 'Path mismatch (JSD/EWMA)', cD(dhol)));
-  grid.appendChild(tile('UCR', isFinite(ucr)?(ucr*100).toFixed(0)+'%':'—', 'Unsupported-claim ratio', cU(ucr)));
-  grid.appendChild(tile('ES', isFinite(es)?(es*100).toFixed(0)+'%':'—', 'Evidence strength', cE(es)));
-  grid.appendChild(tile('Cycles', String(cyc||0), 'cycle⁺ > 0 → RED', (cyc>0?'bad':'ok')));
-  grid.appendChild(tile('X (contradictions)', String(X||0), 'Unresolved contradictions', (X>0?'warn':'ok')));
-
-  // Updated
-  const tstamp = attrs.ts ? Date.parse(attrs.ts) : Date.now();
-  $('updated').textContent = new Date(tstamp).toLocaleString();
-
-  // Why / Try next
-  let why='', fix='';
-  if (status==='white'){ whiteBox.hidden=false; why='Warming up (insufficient history)'; fix='Generate a few more receipts to calibrate the baseline.'; }
-  else if (status==='green'){ msgBox.hidden=false; why='All guardrails within thresholds'; fix='No action needed'; }
-  else if (status==='amber'){
-    warnBox.hidden=false;
-    if (k>=cfg.tau_k) { why='Elevated stress (κ high)'; fix='Shorten or add structure/support so S* rises.'; }
-    else if (dhol>=cfg.tau_hol){ why='Path drift (Δhol high)'; fix='Stabilize reasoning across turns; avoid silent rewrites.'; }
-    else if (ucr>=cfg.ucr_min){ why='Many claims lack nearby support'; fix='Place an evidence sentence or citation within ±1 sentence.'; }
-  } else if (status==='red'){
-    redBox.hidden=false;
-    if (cyc>0){ why='Circular reasoning detected (cycle⁺>0)'; fix='Break the loop; add external evidence or restructure claims.'; }
-    else if (dhol>=cfg.tau_hol){ why='Path drift + possible silent deletion'; fix='Add a resolution/handling sentence for removed contradictions.'; }
-    else if (k>=cfg.tau_k && ucr>=cfg.ucr_min){ why='High κ + unsupported claims'; fix='Add citations or “according to…” near claims.'; }
-  }
-  $('why').textContent = why || '—'; $('fix').textContent = fix || '—';
-
-  // Bars
   function setBar(bar, tick, value, thresh){
-    const fill = clamp01(value); bar.style.color = color(status);
+    const fill = clamp01(value);
+    bar.style.color = color(status);
     bar.querySelector('.fill').style.width = (fill*100).toFixed(1)+'%';
     tick.style.left = (clamp01(thresh)*100).toFixed(1)+'%';
   }
@@ -235,51 +163,45 @@
   barKVal.textContent = isFinite(k)?k.toFixed(3):'—';
   barDVal.textContent = isFinite(dhol)?dhol.toFixed(3):'—';
 
-  // Glyph (guarded)
-  try{
-    const axes = [
-      {label:'κ',     val: cfg.tau_k ? clamp01(k/(cfg.tau_k||1)) : 0},
-      {label:'Δhol',  val: cfg.tau_hol ? clamp01(dhol/(cfg.tau_hol||1)) : 0},
-      {label:'UCR',   val: cfg.ucr_min ? clamp01(ucr/(cfg.ucr_min||1)) : 0},
-      {label:'low ES',val: cfg.es_min ? clamp01((cfg.es_min - (es||0))/(cfg.es_min||1)) : 0},
-      {label:'cycles',val: (cyc>0 ? 1 : 0)},
-      {label:'X',     val: clamp01((X||0)/3)}
-    ];
-    const cx=60, cy=60, R=48, N=axes.length;
-    for(let r=1;r<=3;r++){
-      const circ=document.createElementNS('http://www.w3.org/2000/svg','circle');
-      circ.setAttribute('cx',cx); circ.setAttribute('cy',cy); circ.setAttribute('r',(R/3)*r);
-      circ.setAttribute('fill','none'); circ.setAttribute('stroke','#e6eaf3'); circ.setAttribute('stroke-width','0.9'); glyph.appendChild(circ);
-    }
-    axes.forEach((ax,i)=>{
-      const a=-Math.PI/2 + i*(2*Math.PI/N);
-      const x=cx + R*Math.cos(a), y=cy + R*Math.sin(a);
-      const line=document.createElementNS('http://www.w3.org/2000/svg','line');
-      line.setAttribute('x1',cx); line.setAttribute('y1',cy); line.setAttribute('x2',x); line.setAttribute('y2',y);
-      line.setAttribute('stroke','#e6eaf3'); line.setAttribute('stroke-width','0.9'); glyph.appendChild(line);
-      const lbl=document.createElementNS('http://www.w3.org/2000/svg','text');
-      lbl.setAttribute('x',cx+(R+10)*Math.cos(a)); lbl.setAttribute('y',cy+(R+10)*Math.sin(a));
-      lbl.setAttribute('font-size','9'); lbl.setAttribute('fill','#6a6f7a');
-      lbl.setAttribute('text-anchor', Math.cos(a)>0.35?'start':(Math.cos(a)<-0.35?'end':'middle'));
-      lbl.setAttribute('dominant-baseline','middle'); lbl.textContent=ax.label; glyph.appendChild(lbl);
-    });
-    function pt(i,v){ const a=-Math.PI/2 + i*(2*Math.PI/N); const r=6+(R-6)*v; return [cx+r*Math.cos(a), cy+r*Math.sin(a)]; }
-    const pts=axes.map((ax,i)=>pt(i,ax.val));
-    const path='M'+pts.map(p=>p[0].toFixed(2)+','+p[1].toFixed(2)).join('L')+'Z';
-    const poly=document.createElementNS('http://www.w3.org/2000/svg','path');
-    poly.setAttribute('d', path);
-    poly.setAttribute('fill', status==='red'?'#fee2e2':status==='amber'?'#fff3cd':status==='green'?'#ecfdf5':'#f3f4f6');
-    poly.setAttribute('stroke', color(status)); poly.setAttribute('stroke-width','1.6'); glyph.appendChild(poly);
-    const hub2=document.createElementNS('http://www.w3.org/2000/svg','circle');
-    hub2.setAttribute('cx',60); hub2.setAttribute('cy',60); hub2.setAttribute('r',2.1); hub2.setAttribute('fill',color(status)); glyph.appendChild(hub2);
-  }catch(e){ /* swallow drawing errors; keep page live */ }
+  const tstamp = attrs.ts ? Date.parse(attrs.ts) : Date.now();
+  $('updated').textContent = new Date(tstamp).toLocaleString();
 
-  // Value (very rough; policy-aware if present)
-  const hazard = num((rec.hazard||{}).p_review);
-  const A=15, R=5; const saved = Math.max(0, (A-R)) * Math.max(0, Math.min(1, hazard||0));
-  savedChip.textContent = 'Saved minutes/run: ' + (isFinite(saved)? saved.toFixed(1) : '—');
+  let why='', fix='';
+  if (status==='green'){ $('msgBox').hidden=false; why='All guardrails within thresholds'; fix='No action needed'; }
+  else if (status==='amber'){
+    $('warnBox').hidden=false;
+    if (k>=cfg.tau_k) { why='Elevated stress (κ high)'; fix='Shorten or add structure; raise S*.'; }
+    else if (dhol>=cfg.tau_hol){ why='Path drift (Δhol high)'; fix='Stabilize reasoning; avoid silent rewrites.'; }
+    else if (es>0 && es<0.25){ why='Low evidence strength'; fix='Add a close-support sentence/citation.'; }
+    else if (ucr>=0.40){ why='Unsupported-claim ratio high'; fix='Place evidence within ±1 sentence.'; }
+  } else if (status==='red'){
+    $('redBox').hidden=false;
+    if (cyc>0){ why='Circular reasoning (cycle⁺>0)'; fix='Break the loop; add external evidence.'; }
+    else { why='Near snap or contradictions'; fix='Resolve conflicts; reduce drift; re-run.'; }
+  } else { $('whiteBox').hidden=false; why='Warming up'; fix='Generate a few more receipts.'; }
+  $('why').textContent = why || '—';
+  $('fix').textContent = fix || '—';
 
-  polEl.textContent = policy.policy_id ? `${policy.policy_id}${policy.policy_hash ? ' · ' + policy.policy_hash.slice(0,14)+'…' : ''}` : '—';
+  /* tiny glyph */
+  const axes = [
+    {label:'κ',     val: clamp01(k/ cfg.tau_k)},
+    {label:'Δhol',  val: clamp01(dhol/ cfg.tau_hol)},
+    {label:'UCR',   val: clamp01(ucr/ .40)},
+    {label:'low ES',val: clamp01((0.25 - (es||0))/0.25)},
+    {label:'cycles',val: (cyc>0?1:0)},
+    {label:'X',     val: clamp01((X||0)/3)}
+  ];
+  const cx=60, cy=60, R=48, N=axes.length;
+  for(let r=1;r<=3;r++){ const circ=document.createElementNS('http://www.w3.org/2000/svg','circle'); circ.setAttribute('cx',cx); circ.setAttribute('cy',cy); circ.setAttribute('r',(R/3)*r); circ.setAttribute('fill','none'); circ.setAttribute('stroke','#e6eaf3'); circ.setAttribute('stroke-width','0.9'); glyph.appendChild(circ); }
+  axes.forEach((ax,i)=>{ const a=-Math.PI/2 + i*(2*Math.PI/N); const x=cx+R*Math.cos(a), y=cy+R*Math.sin(a);
+    const line=document.createElementNS('http://www.w3.org/2000/svg','line'); line.setAttribute('x1',cx); line.setAttribute('y1',cy); line.setAttribute('x2',x); line.setAttribute('y2',y); line.setAttribute('stroke','#e6eaf3'); line.setAttribute('stroke-width','0.9'); glyph.appendChild(line);
+    const lbl=document.createElementNS('http://www.w3.org/2000/svg','text'); lbl.setAttribute('x',cx+(R+10)*Math.cos(a)); lbl.setAttribute('y',cy+(R+10)*Math.sin(a)); lbl.setAttribute('font-size','9'); lbl.setAttribute('fill','#6a6f7a'); lbl.setAttribute('text-anchor',Math.cos(a)>0.35?'start':(Math.cos(a)<-0.35?'end':'middle')); lbl.setAttribute('dominant-baseline','middle'); lbl.textContent=ax.label; glyph.appendChild(lbl);
+  });
+  function pt(i,v){ const a=-Math.PI/2 + i*(2*Math.PI/N); const r=6+(R-6)*v; return [cx+r*Math.cos(a), cy+r*Math.sin(a)]; }
+  const pts=axes.map((ax,i)=>pt(i,ax.val));
+  const path='M'+pts.map(p=>p[0].toFixed(2)+','+p[1].toFixed(2)).join('L')+'Z';
+  const poly=document.createElementNS('http://www.w3.org/2000/svg','path');
+  poly.setAttribute('d', path); poly.setAttribute('fill', status==='red'?'#fee2e2':(status==='amber'?'#fff3cd':(status==='green'?'#ecfdf5':'#f3f4f6'))); poly.setAttribute('stroke', color(status)); poly.setAttribute('stroke-width','1.6'); glyph.appendChild(poly);
 })();
 </script>
 </body>
