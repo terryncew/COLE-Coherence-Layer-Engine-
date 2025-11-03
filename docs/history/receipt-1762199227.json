@@ -1,0 +1,7 @@
+"model": "demo-llm/cole",
+"precision": "fp16/fp16",
+"point": "Baseline COLE run at fp16 for speed.",
+"because": "κ and Δhol stay green on short sequences.",
+"but": "Overflow risk rises on very long contexts.",
+"so": "Use fp16 for demos; keep a bf16 path for ≥4k tokens.",
+"k": 0.11, "dhol": 0.010, "fresh": 0.93
