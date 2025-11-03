@@ -1,45 +1,13 @@
 {
   "receipt_version": "1.5-P",
   "version": "OLR/1.5-P",
-  "attrs": {
-    "ts": "2025-11-02T00:00:00Z",
-    "run_id": "cole-health",
-    "issuer": "did:web:terryncew.github.io",
-    "status": "green"
-  },
+  "issued_at": "2025-11-02T00:00:00Z",
+  "attrs": { "status": "green" },
   "model": "cole-evaluator",
-  "issued": "2025-11-02T00:00:00Z",
   "precision": "auto",
-  "point": "Compute \u03ba, \u0394hol, and \u03a6*; emit a health badge.",
-  "because": "Runs stayed within green caps on this vector.",
-  "but": "Caps can flip under long tail prompts.",
-  "so": "Treat green as triage-OK; verify under load.",
-  "signals": {
-    "kappa": 0.22,
-    "dhol": 0.04,
-    "phi_star": 0.95
-  },
-  "sig": "",
-  "claim": "Lean guard receipt.",
-  "openline_frame": {
-    "digest": {
-      "b0": 1,
-      "cycle_plus": 0,
-      "x_frontier": 0,
-      "s_over_c": 2.0,
-      "depth": 3,
-      "ucr": 0.0
-    },
-    "telem": {
-      "phi_topo": 0.7961147573170411,
-      "phi_sem": 0.6352506767648065,
-      "kappa_eff": 0.2838287060618291,
-      "delta_hol": 1.0055340922752073e-05,
-      "evidence_strength": 0.6666666666666666,
-      "del_suspect": false,
-      "cost_tokens": 24
-    },
-    "t_logical": 1762200222
-  },
-  "status": "green"
+  "point": "Compute κ/Δhol/Φ*; emit badge.",
+  "because": "Within caps on this vector.",
+  "but": "Long tail may flip.",
+  "so": "Triage-OK; verify under load.",
+  "signals": { "kappa": 0.287, "dhol": 0.000, "phi_star": 0.92 }
 }
