@@ -1,63 +1,7 @@
-{
-  "receipt_version": "olr/1.5",
-  "attrs": {
-    "status": "green",
-    "ts": "2025-10-26T23:34:21Z"
-  },
-  "signals": {
-    "kappa": 0.347,
-    "dhol": 0.0
-  },
-  "guards": {
-    "cycle_plus": 0,
-    "x_frontier": 0
-  },
-  "topo": {
-    "kappa": 0.34678335160967605,
-    "phi_sem_proxy": 0.6111630875668695,
-    "rigidity": 0.7036389224419553,
-    "H": 0.6532166483903239
-  },
-  "openline_frame": {
-    "digest": {
-      "b0": 1,
-      "cycle_plus": 0,
-      "x_frontier": 0,
-      "s_over_c": 2.0,
-      "depth": 3
-    },
-    "telem": {
-      "phi_sem_proxy": 0.6111630875668695,
-      "phi_topo": 0.7961147573170411,
-      "delta_hol": 0.0,
-      "kappa_eff": 0.34678335160967605,
-      "cost_tokens": 24
-    },
-    "t_logical": 1762107622
-  },
-  "temporal": {
-    "latest": {
-      "kappa": 0.34678335160967605,
-      "delta_hol": 0.0
-    }
-  },
-  "training_evolution": {
-    "seed": "unknown",
-    "checkpoint_lineage": [],
-    "hp_schedule_digest": null,
-    "capability_events": [],
-    "loss_trajectory_shape": {
-      "largest_jump": 0.0,
-      "inflections": 0,
-      "ewma_slope": 0.0
-    },
-    "grad_norm_stats": {
-      "mean": 0.0,
-      "std": 0.0,
-      "max": 0.0
-    },
-    "causal_link_hint": false
-  },
-  "claim": "Lean guard receipt.",
-  "status": "green"
-}
+"model": "demo-llm/cole",
+"precision": "fp16/fp16",
+"point": "Baseline COLE run at fp16 for speed.",
+"because": "κ and Δhol stay green on short sequences.",
+"but": "Overflow risk rises on very long contexts.",
+"so": "Use fp16 for demos; keep a bf16 path for ≥4k tokens.",
+"k": 0.11, "dhol": 0.010, "fresh": 0.93
