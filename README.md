@@ -64,6 +64,15 @@ Closed-alpha guide lives in **TESTERS.md** (5-minute smoke test).
 
 ---
 
+## Research Foundation
+
+This implementation is based on the **Coherence Dynamics Framework**:
+- 📄 Paper: [Coherence Dynamics v1.2](https://doi.org/10.5281/zenodo.17476985)
+- 📊 See `/docs/PAPER.md` for technical overview
+- ✅ Falsifiable early warning system for complex systems
+
+---
+
 ## License & citation
 
 - License: MIT  
